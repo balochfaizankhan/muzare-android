@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_main"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:background="@color/bg_main"
+        app:menu="@menu/main_menu"
+        app:title="" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="24dp">
+
+            <!-- Professional Header Section (Condensed) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingTop="0dp"
+                android:paddingBottom="2dp">
+
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="54dp"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_app_logo" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="0dp"
+                    android:letterSpacing="0.03"
+                    android:text="@string/app_tagline"
+                    android:textAlignment="center"
+                    android:textAllCaps="true"
+                    android:textColor="@color/brand_accent"
+                    android:textSize="10sp"
+                    android:lineSpacingExtra="-2dp"
+                    android:textStyle="normal" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="32dp"
+                android:layout_height="2dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="8dp"
+                android:background="@color/brand_primary" />
+
+            <!-- Current Farm Selector (Condensed) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="10dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardFarmSelector"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:strokeColor="@color/border_light"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingVertical="8dp"
+                        android:paddingHorizontal="12dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@string/label_current_farm"
+                            android:src="@drawable/ic_farm"
+                            app:tint="@color/brand_primary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/label_current_farm"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="9sp" />
+
+                            <TextView
+                                android:id="@+id/textViewCurrentFarm"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/group_general"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                android:maxLines="1"
+                                android:ellipsize="end"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSeasonSelector"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    app:strokeColor="@color/border_light"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingVertical="8dp"
+                        android:paddingHorizontal="12dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="Season"
+                            android:src="@drawable/ic_receipt_long"
+                            app:tint="@color/brand_primary" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Current Season"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="9sp" />
+
+                            <TextView
+                                android:id="@+id/textViewCurrentSeason"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="2026 Season"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                android:maxLines="1"
+                                android:ellipsize="end"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:gravity="center"
+                android:text="@string/msg_choose_module"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.03" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alignmentMode="alignMargins"
+                android:columnCount="2"
+                android:columnOrderPreserved="false">
+
+                <!-- Workforce -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardWorkforce"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/module_workforce"
+                            android:src="@drawable/ic_workforce" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/module_workforce" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Expenses -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardExpenditure"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/module_expenditure"
+                            android:src="@drawable/ic_expenses" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/title_expenditure" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Sales -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSales"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/title_sales"
+                            android:src="@drawable/ic_sales" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/title_sales" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Dispatch -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardDispatch"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/title_dispatch"
+                            android:src="@drawable/ic_dispatch" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/title_dispatch" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Funds -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardFunds"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/module_funds"
+                            android:src="@drawable/ic_funds" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/title_funds" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Accounts -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardAccounts"
+                    style="@style/DashboardCardStyle">
+                    <LinearLayout style="@style/DashboardCardContentStyle">
+                        <ImageView
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@string/title_accounts"
+                            android:src="@drawable/ic_wallet" />
+                        <TextView
+                            style="@style/DashboardCardTextStyle"
+                            android:textSize="14sp"
+                            android:text="@string/title_accounts" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </GridLayout>
+
+            <!-- Operational Summary Section -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/title_operational_summary"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-black"
+                android:textStyle="bold" />
+
+            <GridLayout
+                android:id="@+id/summaryGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alignmentMode="alignMargins"
+                android:columnCount="2">
+
+                <!-- Workforce Today -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummaryWorkforce"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/module_workforce" />
+                        <TextView
+                            android:id="@+id/tvSummaryWorkforce"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Dispatch Today -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummaryDispatch"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/title_dispatch" />
+                        <TextView
+                            android:id="@+id/tvSummaryDispatch"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Sales Today -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummarySales"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/title_sales" />
+                        <TextView
+                            android:id="@+id/tvSummarySales"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Available Balance -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummaryBalance"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/label_balance_short" />
+                        <TextView
+                            android:id="@+id/tvSummaryBalance"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Total Owed -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummaryOwed"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/label_total_owed" />
+                        <TextView
+                            android:id="@+id/tvSummaryOwed"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:textColor="#004EEB"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Total Expenses -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummaryTotalExpenses"
+                    style="@style/SummaryCardStyle">
+                    <LinearLayout style="@style/SummaryCardContentStyle" android:padding="8dp">
+                        <TextView
+                            style="@style/SummaryLabelStyle"
+                            android:textSize="10sp"
+                            android:text="@string/label_total_expenses" />
+                        <TextView
+                            android:id="@+id/tvSummaryTotalExpenses"
+                            style="@style/SummaryValueStyle"
+                            android:textSize="14sp"
+                            android:textColor="#F04438"
+                            android:text="" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </GridLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

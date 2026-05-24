@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="1000"
+    android:viewportHeight="1000">
+
+    <!-- High-Precision Professional Vector Recreation of Muzare Logo -->
+
+    <!-- Graphic Elements Group -->
+    <group android:translateY="-40">
+
+        <!-- Elegant Tapered Navy Cradle -->
+        <path
+            android:fillColor="#002B4E"
+            android:pathData="M245,360 c-40,70 -30,230 230,280 c250,50 360,-140 370,-160 c0,0 -50,250 -370,250 c-260,0 -300,-300 -230,-370 z" />
+
+        <!-- Palm Tree (Green) -->
+        <path
+            android:fillColor="#5A8D3F"
+            android:pathData="M355,450l-15,185h35l-15,-185z" /> <!-- Trunk -->
+        <path
+            android:fillColor="#5A8D3F"
+            android:pathData="M370,450c-90,-30 -180,0 -180,-90c0,-45 90,-25 180,90z" /> <!-- L Leaf -->
+        <path
+            android:fillColor="#5A8D3F"
+            android:pathData="M370,450c-25,-90 30,-180 100,-150c50,20 0,110 -100,150z" /> <!-- TL Leaf -->
+        <path
+            android:fillColor="#5A8D3F"
+            android:pathData="M370,450c90,-30 180,0 180,-90c0,-45 -90,-25 -180,90z" /> <!-- R Leaf -->
+        <path
+            android:fillColor="#5A8D3F"
+            android:pathData="M370,450c60,80 160,80 160,0c0,-50 -110,-30 -160,-10s0,80 0,10z" /> <!-- Bottom Leaf -->
+
+        <!-- Truck Silhouette (Navy) -->
+        <path
+            android:fillColor="#002B4E"
+            android:pathData="M525,400h190l70,95v85h-260v-180z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M710,420h35l40,50h-75z" /> <!-- Window -->
+        <path
+            android:fillColor="#002B4E"
+            android:pathData="M580,620a28,28 0 1,1 56,0a28,28 0 1,1 -56,0z M730,620a28,28 0 1,1 56,0a28,28 0 1,1 -56,0z" />
+
+        <!-- 3 Green furrows -->
+        <path
+            android:strokeColor="#5A8D3F"
+            android:strokeWidth="20"
+            android:strokeLineCap="round"
+            android:pathData="M335,610c120,100 360,70 460,0" />
+        <path
+            android:strokeColor="#5A8D3F"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:pathData="M385,670c120,100 310,70 410,0" />
+        <path
+            android:strokeColor="#5A8D3F"
+            android:strokeWidth="12"
+            android:strokeLineCap="round"
+            android:pathData="M435,730c100,80 260,50 330,0" />
+    </group>
+
+    <!-- Arabic text area -->
+    <path
+        android:fillColor="#002B4E"
+        android:pathData="M230,860c0,0 60,-150 185,-150s185,150 185,150v80h-370z M630,780h185v185h-185z" />
+    <path
+        android:fillColor="#5A8D3F"
+        android:pathData="M265,720c30,-30 80,0 40,75c-40,0 -70,-45 -40,-75z" />
+
+    <!-- English spaced name -->
+    <path
+        android:fillColor="#89B84C"
+        android:pathData="M225,970h600v35h-600z" />
+
+</vector>

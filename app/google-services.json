@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "595649931208",
+    "project_id": "labour-dispatch-manager",
+    "storage_bucket": "labour-dispatch-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:595649931208:android:dee885f3cf6dc4d40882fd",
+        "android_client_info": {
+          "package_name": "com.example.labourattendance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBddFZTgiW20hurIF60m5bAdcu6fapczKE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#101828</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Muzare Brand Palette -->
+    <color name="brand_primary">#002B4E</color>
+    <color name="brand_secondary">#5A8D3F</color>
+    <color name="brand_accent">#89B84C</color>
+    <color name="brand_green">#5A8D3F</color>
+    <color name="brand_red">#F04438</color>
+    <color name="brand_yellow">#FDB022</color>
+
+    <color name="bg_main">#FFFFFF</color>
+    <color name="text_primary">#002B4E</color>
+    <color name="text_secondary">#475467</color>
+    <color name="text_muted">#667085</color>
+
+    <color name="border_light">#EAECF0</color>
+
+    <!-- Legacy Support -->
+    <color name="brand_blue">#002B4E</color>
+    <color name="brand_blue_dark">#002B4E</color>
+    <color name="brand_gray">#475467</color>
+    <color name="screen_background">#FFFFFF</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_stroke">#EAECF0</color>
+</resources>

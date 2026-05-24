@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_language"
+        android:title="@string/action_language"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_notifications"
+        android:title="@string/action_notifications"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_sync"
+        android:title="@string/action_sync"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_restore_cloud"
+        android:title="@string/action_restore_cloud"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_backup"
+        android:title="@string/btn_backup"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_restore"
+        android:title="@string/btn_restore"
+        app:showAsAction="never" />
+</menu>

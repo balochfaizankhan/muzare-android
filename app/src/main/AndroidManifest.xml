@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.labourattendance">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LabourAttendance">
+
+        <activity
+            android:name=".AdvanceActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdvanceReportActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ReportActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".SeasonActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MonthlySummaryActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AttendanceActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".DispatchActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".DispatchReportActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ExpenditureActivity"
+            android:exported="false" />
+        <activity
+            android:name=".VoucherDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddVoucherActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".FundsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ExpenditureReportActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".SalesActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AccountsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".AccountDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ProfitLossActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".FundReportActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".FarmsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ReminderReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
