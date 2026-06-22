@@ -49,6 +49,7 @@
     <string name="no_labour_available">لم يتم العثور على سجلات للفترة المختارة.</string>
     <string name="report_range_summary">الفترة: %1$s – %2$s\nحاضر: %3$d  |  نصف يوم: %4$d  |  غائب: %5$d  |  سلفة: %6$d ر.س</string>
     <string name="summary_counts">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  سلفة: %4$d ر.س</string>
+    <string name="report_individual_summary_payable">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  مستحق: %4$d ر.س</string>
     <string name="report_individual_summary">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  سلفة: %4$d ر.س</string>
     <!-- Advance History -->
     <string name="title_recent_history">السجل الأخير</string>
@@ -89,6 +90,8 @@
     <string name="metric_half">إجمالي نصف يوم</string>
     <string name="metric_absent">إجمالي الغياب</string>
     <string name="metric_advance">إجمالي السلف</string>
+    <string name="metric_payable">إجمالي المستحق</string>
+    <string name="label_payable">مستحق</string>
     <string name="metric_total_labours">إجمالي العمال</string>
     <string name="metric_active_labours">العمال النشطون</string>
     <string name="metric_inactive_labours">العمال غير النشطين</string>
@@ -186,6 +189,10 @@
     <string name="group_general">عام</string>
     <string name="label_join_date">تاريخ الانضمام</string>
     <string name="label_end_date">تاريخ الانتهاء</string>
+    <string name="label_paid_from_caps">تم الدفع من</string>
+    <string name="label_labour_caps">العامل</string>
+    <string name="label_amount_caps">المبلغ</string>
+    <string name="btn_select_date_caps">اختر التاريخ</string>
     <string name="label_status">الحالة</string>
     <string name="status_active">نشط</string>
     <string name="status_inactive">غير نشط</string>

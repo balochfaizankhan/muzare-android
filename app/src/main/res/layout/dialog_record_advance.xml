@@ -5,112 +5,206 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@android:color/white"
-    android:padding="24dp">
+    android:paddingHorizontal="20dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="12dp">
 
     <TextView
         android:id="@+id/dialog_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/title_record_advance"
-        android:textColor="@color/text_primary"
-        android:textSize="20sp"
+        android:textColor="@color/brand_primary"
+        android:textSize="18sp"
+        android:fontFamily="sans-serif-black"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/dialog_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:text="@string/msg_record_advance"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp" />
+        android:textColor="@color/brand_primary"
+        android:textSize="17sp"
+        android:fontFamily="sans-serif-black"
+        android:textStyle="bold" />
 
-    <FrameLayout
-        android:id="@+id/layoutLabourSearch"
+    <LinearLayout
+        android:id="@+id/layoutLabourAmountRow"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="8dp">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
 
-        <AutoCompleteTextView
-            android:id="@+id/autoCompleteLabour"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_input"
-            android:hint="@string/hint_search_labour_name"
-            android:paddingStart="16dp"
-            android:paddingEnd="44dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="#101828"
-            android:textSize="16sp"
-            android:completionThreshold="1"
-            android:popupBackground="@android:color/white"
-            android:inputType="text" />
+        <LinearLayout
+            android:id="@+id/containerLabourSearch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.7"
+            android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/imageViewClearLabour"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/btn_close"
-            android:padding="6dp"
-            android:src="@drawable/ic_close"
-            android:visibility="gone" />
-    </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_labour_caps"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
 
-    <EditText
-        android:id="@+id/edit_advance_amount"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_input"
-        android:hint="@string/hint_amount_sar"
-        android:inputType="numberDecimal"
-        android:paddingHorizontal="16dp"
-        android:textColor="@color/text_primary"
-        android:textColorHint="#101828"
-        android:textSize="16sp" />
+            <FrameLayout
+                android:id="@+id/layoutLabourSearch"
+                android:layout_width="match_parent"
+                android:layout_height="52dp">
+
+                <AutoCompleteTextView
+                    android:id="@+id/autoCompleteLabour"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_input"
+                    android:hint="@string/hint_search_labour_name"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="40dp"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="#98A2B3"
+                    android:textSize="14sp"
+                    android:completionThreshold="1"
+                    android:popupBackground="@android:color/white"
+                    android:inputType="text" />
+
+                <ImageView
+                    android:id="@+id/imageViewClearLabour"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/btn_close"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_close"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <View
+            android:id="@+id/viewSpacerLabourAmount"
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <LinearLayout
+            android:id="@+id/containerAmount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.3"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_amount_caps"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/edit_advance_amount"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_input"
+                android:hint="0"
+                android:inputType="numberDecimal"
+                android:paddingHorizontal="12dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="#98A2B3"
+                android:textSize="14sp"
+                android:gravity="end|center_vertical" />
+        </LinearLayout>
+    </LinearLayout>
 
     <EditText
         android:id="@+id/edit_advance_description"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="10dp"
         android:background="@drawable/bg_input"
         android:hint="@string/hint_description_optional"
         android:inputType="text"
         android:paddingHorizontal="16dp"
         android:textColor="@color/text_primary"
-        android:textColorHint="#101828"
-        android:textSize="16sp" />
+        android:textColorHint="#98A2B3"
+        android:textSize="15sp" />
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="@string/label_paid_from"
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp" />
+        android:orientation="horizontal"
+        android:baselineAligned="false">
 
-    <Spinner
-        android:id="@+id/spinnerFundSourceAdvance"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/bg_input"
-        android:paddingHorizontal="12dp" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/button_select_date"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/bg_button_primary"
-        android:text="@string/btn_select_date"
-        android:textAllCaps="false"
-        android:textColor="@color/white"
-        android:textStyle="bold"
-        android:textSize="16sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_paid_from_caps"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/spinnerFundSourceAdvance"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_input"
+                android:paddingHorizontal="4dp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="1dp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_select_date_caps"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
+
+            <Button
+                android:id="@+id/button_select_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_primary"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="13sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

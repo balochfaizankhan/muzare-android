@@ -8,5 +8,7 @@
     android:textColor="@color/text_primary"
     android:textSize="14sp"
     android:gravity="center_vertical"
+    android:maxLines="1"
+    android:ellipsize="end"
     android:lineSpacingExtra="2dp"
     android:fontFamily="sans-serif-medium" />

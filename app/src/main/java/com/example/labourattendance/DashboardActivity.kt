@@ -17,6 +17,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import android.graphics.Color
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.example.labourattendance.databinding.ActivityDashboardBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
@@ -29,6 +32,7 @@ class DashboardActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDashboardBinding
     private lateinit var databaseHelper: DatabaseHelper
+    private lateinit var syncManager: SyncManager
 
     private val backupLauncher: ActivityResultLauncher<String> = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/octet-stream")
@@ -68,11 +72,12 @@ class DashboardActivity : AppCompatActivity() {
         databaseHelper = DatabaseHelper(this)
         databaseHelper.syncExistingToTransactions()
 
-        // Auto-Sync to Cloud on startup to keep devices in line
-        // (Only for admins/operators to avoid overloading)
+        syncManager = SyncManager.getInstance(this)
+        observeSyncStatus()
+        
         val role = getSharedPreferences("Settings", MODE_PRIVATE).getString("User_Role", "viewer")
         if (role != "viewer") {
-            syncDataToCloud()
+            syncManager.startAutoSync()
         }
 
         updateFarmUI()
@@ -127,6 +132,46 @@ class DashboardActivity : AppCompatActivity() {
         updateOperationalSummary()
     }
 
+    private fun observeSyncStatus() {
+        lifecycleScope.launch {
+            syncManager.syncStatus.collect { status ->
+                updateSyncUI(status)
+            }
+        }
+    }
+
+    private fun updateSyncUI(status: SyncManager.SyncStatus) {
+        val indicator = binding.viewSyncIndicator
+        val text = binding.tvSyncStatus
+        
+        when (status) {
+            is SyncManager.SyncStatus.Idle -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#98A2B3"))
+                text.text = "Idle"
+            }
+            is SyncManager.SyncStatus.Syncing -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#004EEB"))
+                text.text = "Syncing..."
+            }
+            is SyncManager.SyncStatus.Synced -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#12B76A"))
+                text.text = "Synced"
+            }
+            is SyncManager.SyncStatus.Offline -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#F04438"))
+                text.text = "Offline"
+            }
+            is SyncManager.SyncStatus.Pending -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#FDB022"))
+                text.text = "Pending: ${status.count}"
+            }
+            is SyncManager.SyncStatus.Failed -> {
+                indicator.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#F04438"))
+                text.text = "Sync Failed"
+            }
+        }
+    }
+
     private fun updateFarmUI() {
         val farmId = databaseHelper.getCurrentFarmId()
         val farm = databaseHelper.getAllFarms().find { it.id == farmId }
@@ -175,7 +220,6 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun setupRoleBasedUI() {
         val role = getSharedPreferences("Settings", MODE_PRIVATE).getString("User_Role", "viewer")
-        // Viewers are now allowed to see the Workforce module (Read-only)
         binding.cardWorkforce.visibility = View.VISIBLE
     }
 
@@ -203,7 +247,7 @@ class DashboardActivity : AppCompatActivity() {
                 true
             }
             R.id.action_sync -> {
-                syncDataToCloud()
+                syncManager.triggerSync()
                 true
             }
             R.id.action_restore_cloud -> {
@@ -222,39 +266,6 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    private fun syncDataToCloud() {
-        val firestore = FirestoreHelper()
-        
-        // Farms
-        databaseHelper.getAllFarms().forEach { firestore.syncFarm(it) }
-
-        // Workforce
-        databaseHelper.getAllGroups().forEach { firestore.syncGroup(it) }
-        databaseHelper.getAllLabours().forEach { firestore.syncLabour(it) }
-        databaseHelper.getAllAdvances().forEach { firestore.syncAdvance(it) }
-        
-        val calendar = Calendar.getInstance()
-        val toDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
-        calendar.add(Calendar.DAY_OF_YEAR, -60) // Sync last 60 days of attendance
-        val fromDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
-        databaseHelper.getAttendanceEntries(fromDate, toDate).forEach { firestore.syncAttendance(it) }
-
-        // Expenditure
-        databaseHelper.getAllExpCategories().forEach { firestore.syncExpCategory(it) }
-        databaseHelper.getAllVouchers().forEach { firestore.syncVoucher(it) }
-        
-        // Funds
-        databaseHelper.getAllFundSources().forEach { firestore.syncFundSource(it) }
-        databaseHelper.getAllFundEntries().forEach { firestore.syncFundEntry(it) }
-        
-        // Dispatch
-        databaseHelper.getAllVehicles().forEach { firestore.syncVehicle(it) }
-        databaseHelper.getAllDateTypes().forEach { firestore.syncDateType(it) }
-        databaseHelper.getAllDispatches().forEach { firestore.syncDispatch(it) }
-
-        Toast.makeText(this, "All data synced to cloud successfully", Toast.LENGTH_SHORT).show()
-    }
-
     private fun restoreFromCloud() {
         val firestore = FirestoreHelper()
         Toast.makeText(this, R.string.msg_restoring, Toast.LENGTH_LONG).show()
@@ -262,41 +273,45 @@ class DashboardActivity : AppCompatActivity() {
         firestore.fetchAllFarms { farms ->
             databaseHelper.clearAndRestoreFarms(farms)
             
-            firestore.fetchAllGroups { groups ->
-                databaseHelper.clearAndRestoreGroups(groups)
+            firestore.fetchAllSeasons { seasons ->
+                databaseHelper.clearAndRestoreSeasons(seasons)
                 
-                firestore.fetchAllLabours { labours ->
-                    databaseHelper.clearAndRestoreLabours(labours)
+                firestore.fetchAllGroups { groups ->
+                    databaseHelper.clearAndRestoreGroups(groups)
                     
-                    firestore.fetchAllAttendance { attendance ->
-                        databaseHelper.clearAndRestoreAttendance(attendance)
+                    firestore.fetchAllLabours { labours ->
+                        databaseHelper.clearAndRestoreLabours(labours)
                         
-                        firestore.fetchAllAdvances { advances ->
-                            databaseHelper.clearAndRestoreAdvances(advances)
+                        firestore.fetchAllAttendance { attendance ->
+                            databaseHelper.clearAndRestoreAttendance(attendance)
                             
-                            firestore.fetchAllExpenditure { vouchers ->
-                                databaseHelper.clearAndRestoreExpenditure(vouchers)
+                            firestore.fetchAllAdvances { advances ->
+                                databaseHelper.clearAndRestoreAdvances(advances)
                                 
-                                firestore.fetchAllFundSources { sources ->
-                                    databaseHelper.clearAndRestoreFundSources(sources)
+                                firestore.fetchAllExpenditure { vouchers ->
+                                    databaseHelper.clearAndRestoreExpenditure(vouchers)
                                     
-                                    firestore.fetchAllFundEntries { entries ->
-                                        databaseHelper.clearAndRestoreFundEntries(entries)
+                                    firestore.fetchAllFundSources { sources ->
+                                        databaseHelper.clearAndRestoreFundSources(sources)
                                         
-                                        firestore.fetchAllVehicles { vehicles ->
-                                            databaseHelper.clearAndRestoreVehicles(vehicles)
+                                        firestore.fetchAllFundEntries { entries ->
+                                            databaseHelper.clearAndRestoreFundEntries(entries)
                                             
-                                            firestore.fetchAllDateTypes { types ->
-                                                databaseHelper.clearAndRestoreDateTypes(types)
+                                            firestore.fetchAllVehicles { vehicles ->
+                                                databaseHelper.clearAndRestoreVehicles(vehicles)
                                                 
-                                                firestore.fetchAllDispatches { dispatches ->
-                                                    databaseHelper.clearAndRestoreDispatches(dispatches)
+                                                firestore.fetchAllDateTypes { types ->
+                                                    databaseHelper.clearAndRestoreDateTypes(types)
                                                     
-                                                    // Force a database cleanup/re-sync for logic integrity
-                                                    databaseHelper.onOpen(databaseHelper.writableDatabase)
-                                                    databaseHelper.syncExistingToTransactions()
-                                                    
-                                                    Toast.makeText(this, R.string.msg_restore_success, Toast.LENGTH_SHORT).show()
+                                                    firestore.fetchAllDispatches { dispatches ->
+                                                        databaseHelper.clearAndRestoreDispatches(dispatches)
+                                                        
+                                                        // Force a database cleanup/re-sync for logic integrity
+                                                        databaseHelper.onOpen(databaseHelper.writableDatabase)
+                                                        databaseHelper.syncExistingToTransactions()
+                                                        
+                                                        Toast.makeText(this, R.string.msg_restore_success, Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
                                         }

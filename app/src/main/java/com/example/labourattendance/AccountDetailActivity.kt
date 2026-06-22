@@ -23,8 +23,14 @@ class AccountDetailActivity : AppCompatActivity() {
     private lateinit var databaseHelper: DatabaseHelper
     private lateinit var textViewAccountName: TextView
     private lateinit var textViewAccountBalance: TextView
+    private lateinit var tvSummaryExpenses: TextView
+    private lateinit var tvSummaryAdvances: TextView
+    private lateinit var tvSummarySettlements: TextView
+    private lateinit var tvNetBalance: TextView
     private lateinit var txHistoryContainer: LinearLayout
     private var accountId: Int = -1
+    private val expandedGroups = mutableSetOf<String>()
+    private var isFirstLoad = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         loadLocale()
@@ -52,6 +58,10 @@ class AccountDetailActivity : AppCompatActivity() {
         databaseHelper = DatabaseHelper(this)
         textViewAccountName = findViewById(R.id.textViewAccountName)
         textViewAccountBalance = findViewById(R.id.textViewAccountBalance)
+        tvSummaryExpenses = findViewById(R.id.tvSummaryExpenses)
+        tvSummaryAdvances = findViewById(R.id.tvSummaryAdvances)
+        tvSummarySettlements = findViewById(R.id.tvSummarySettlements)
+        tvNetBalance = findViewById(R.id.tvNetBalance)
         txHistoryContainer = findViewById(R.id.txHistoryContainer)
 
         accountId = intent.getIntExtra("ACCOUNT_ID", -1)
@@ -76,21 +86,31 @@ class AccountDetailActivity : AppCompatActivity() {
         val displayBalance = if (isPartner) -account.balance else account.balance
 
         textViewAccountName.text = account.name
-        textViewAccountBalance.text = getString(R.string.label_balance, displayBalance.toInt())
+        textViewAccountBalance.text = "Balance: SAR ${displayBalance.toInt()}"
         
         val color = if (isPartner) {
-            if (displayBalance <= 0) "#004EEB" else "#F04438"
+            if (displayBalance <= 0) "#12B76A" else "#F04438"
         } else {
             if (displayBalance >= 0) "#12B76A" else "#F04438"
         }
         textViewAccountBalance.setTextColor(Color.parseColor(color))
 
-        loadTransactions()
+        val transactions = databaseHelper.getAccountTransactions(accountId)
+        
+        val expensesTotal = transactions.filter { it.moduleSource == "Expense" }.sumOf { it.amount }
+        val advancesTotal = transactions.filter { it.moduleSource == "Advance" }.sumOf { it.amount }
+        val settlementsTotal = transactions.filter { it.moduleSource == "Settlement" || it.moduleSource == "Funds" }.sumOf { it.amount }
+        
+        tvSummaryExpenses.text = "SAR ${expensesTotal.toInt()}"
+        tvSummaryAdvances.text = "SAR ${advancesTotal.toInt()}"
+        tvSummarySettlements.text = "SAR ${settlementsTotal.toInt()}"
+        tvNetBalance.text = "Net Balance: SAR ${displayBalance.toInt()}"
+
+        loadTransactions(transactions)
     }
 
-    private fun loadTransactions() {
+    private fun loadTransactions(transactions: List<DatabaseHelper.AccountTransaction>) {
         txHistoryContainer.removeAllViews()
-        val transactions = databaseHelper.getAccountTransactions(accountId)
 
         if (transactions.isEmpty()) {
             val tv = TextView(this).apply {
@@ -104,66 +124,152 @@ class AccountDetailActivity : AppCompatActivity() {
             return
         }
 
-        transactions.forEach { tx ->
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(dpToPx(14), dpToPx(14), dpToPx(14), dpToPx(14))
-                setBackgroundResource(R.drawable.bg_card)
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                    bottomMargin = dpToPx(10)
-                }
-                gravity = Gravity.CENTER_VERTICAL
+        val groups = transactions.groupBy { tx ->
+            when (tx.moduleSource) {
+                "Expense" -> "Expenses"
+                "Advance" -> "Advances"
+                "Settlement", "Funds" -> "Settlements"
+                "Sales" -> "Sales / Income"
+                else -> "Others"
             }
+        }
 
-            val detailsLayout = LinearLayout(this).apply {
+        // Define order of groups
+        val order = listOf("Expenses", "Advances", "Settlements", "Sales / Income", "Others")
+        
+        if (isFirstLoad) {
+            expandedGroups.addAll(order)
+            isFirstLoad = false
+        }
+        
+        order.forEach { groupName ->
+            val groupTxs = groups[groupName] ?: return@forEach
+            addGroupToContainer(groupName, groupTxs)
+        }
+    }
+
+    private fun addGroupToContainer(groupName: String, txs: List<DatabaseHelper.AccountTransaction>) {
+        val totalAmount = txs.sumOf { it.amount }
+        val isExpanded = expandedGroups.contains(groupName)
+
+        // Group Header
+        val headerView = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dpToPx(16), dpToPx(14), dpToPx(16), dpToPx(14))
+            isClickable = true
+            isFocusable = true
+            
+            // Background with slight tint
+            setBackgroundColor(Color.parseColor("#F9FAFB"))
+            
+            setOnClickListener {
+                if (expandedGroups.contains(groupName)) {
+                    expandedGroups.remove(groupName)
+                } else {
+                    expandedGroups.add(groupName)
+                }
+                loadAccountData()
+            }
+        }
+
+        val indicatorTv = TextView(this).apply {
+            text = if (isExpanded) "▼" else "▶"
+            textSize = 12f
+            setTextColor(Color.parseColor("#002B4E"))
+            setPadding(0, 0, dpToPx(12), 0)
+        }
+
+        val titleLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val nameTv = TextView(this).apply {
+            text = groupName
+            textSize = 15f
+            setTextColor(Color.parseColor("#002B4E"))
+            setTypeface(null, Typeface.BOLD)
+        }
+
+        val statsTv = TextView(this).apply {
+            text = "Total: SAR ${totalAmount.toInt()}  •  ${txs.size} Entries"
+            textSize = 12f
+            setTextColor(Color.parseColor("#475467"))
+        }
+
+        titleLayout.addView(nameTv)
+        titleLayout.addView(statsTv)
+        
+        headerView.addView(indicatorTv)
+        headerView.addView(titleLayout)
+        
+        txHistoryContainer.addView(headerView)
+
+        // Divider after header
+        txHistoryContainer.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1))
+            setBackgroundColor(Color.parseColor("#EAECF0"))
+        })
+
+        if (isExpanded) {
+            val itemsContainer = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(0, dpToPx(8), 0, dpToPx(16))
             }
 
-            val sourceTv = TextView(this).apply {
-                val displaySource = when(tx.moduleSource) {
-                    "Funds" -> getString(R.string.title_funds)
-                    "Settlement" -> getString(R.string.title_funds)
-                    "Expense" -> getString(R.string.title_expenditure)
-                    "Sales" -> getString(R.string.title_sales)
-                    "Advance" -> getString(R.string.btn_advance)
-                    else -> tx.moduleSource
+            txs.forEach { tx ->
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    setPadding(dpToPx(14), dpToPx(12), dpToPx(14), dpToPx(12))
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    gravity = Gravity.CENTER_VERTICAL
                 }
-                text = getString(R.string.label_tx_source, displaySource)
-                setTextColor(Color.parseColor("#002B4E"))
-                setTypeface(null, Typeface.BOLD)
-                textSize = 15f
+
+                val detailsLayout = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                }
+
+                val dateTv = TextView(this).apply {
+                    text = tx.date
+                    setTextColor(Color.parseColor("#667085"))
+                    textSize = 11f
+                }
+
+                val remarksTv = TextView(this).apply {
+                    text = if (tx.remarks.isNullOrEmpty()) "No details" else tx.remarks
+                    setTextColor(Color.parseColor("#344054"))
+                    textSize = 14f
+                    setPadding(0, dpToPx(2), 0, 0)
+                }
+
+                detailsLayout.addView(dateTv)
+                detailsLayout.addView(remarksTv)
+
+                val amountTv = TextView(this).apply {
+                    val sign = if (tx.transactionType == "Credit") "+" else "-"
+                    text = "$sign SAR ${tx.amount.toInt()}"
+                    setTextColor(if (tx.transactionType == "Credit") Color.parseColor("#12B76A") else Color.parseColor("#F04438"))
+                    setTypeface(null, Typeface.BOLD)
+                    textSize = 15f
+                    gravity = Gravity.END
+                }
+
+                card.addView(detailsLayout)
+                card.addView(amountTv)
+                itemsContainer.addView(card)
+                
+                // Inner divider
+                itemsContainer.addView(View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1)).apply {
+                        marginStart = dpToPx(14)
+                        marginEnd = dpToPx(14)
+                    }
+                    setBackgroundColor(Color.parseColor("#F2F4F7"))
+                })
             }
-
-            val dateTv = TextView(this).apply {
-                text = tx.date
-                setTextColor(Color.parseColor("#667085"))
-                textSize = 11f
-            }
-
-            val remarksTv = TextView(this).apply {
-                text = if (tx.remarks.isNullOrEmpty()) "No details" else tx.remarks
-                setTextColor(Color.parseColor("#475467"))
-                textSize = 13f
-                setPadding(0, dpToPx(4), 0, 0)
-            }
-
-            detailsLayout.addView(sourceTv)
-            detailsLayout.addView(dateTv)
-            detailsLayout.addView(remarksTv)
-
-            val amountTv = TextView(this).apply {
-                val sign = if (tx.transactionType == "Credit") "+" else "-"
-                text = "$sign SAR ${tx.amount.toInt()}"
-                setTextColor(if (tx.transactionType == "Credit") Color.parseColor("#12B76A") else Color.parseColor("#F04438"))
-                setTypeface(null, Typeface.BOLD)
-                textSize = 16f
-                gravity = Gravity.END
-            }
-
-            card.addView(detailsLayout)
-            card.addView(amountTv)
-            txHistoryContainer.addView(card)
+            txHistoryContainer.addView(itemsContainer)
         }
     }
 

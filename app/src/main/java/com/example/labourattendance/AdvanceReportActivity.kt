@@ -319,77 +319,116 @@ class AdvanceReportActivity : AppCompatActivity() {
     }
 
     private fun displayAdvances(advances: List<DatabaseHelper.AdvanceRecord>, labours: List<DatabaseHelper.Labour>, groups: List<DatabaseHelper.Group>) {
-        advances.sortedByDescending { it.date }.forEach { adv ->
-            val labour = labours.find { it.id == adv.labourId }
-            val group = groups.find { it.id == labour?.groupId }
+        val advancesByLabour = advances.groupBy { it.labourId }
+        
+        // Iterate through all labours to maintain their display order
+        labours.forEach { labour ->
+            val labourAdvances = advancesByLabour[labour.id] ?: return@forEach
+            val group = groups.find { it.id == labour.groupId }
+            val totalForLabour = labourAdvances.sumOf { it.amount }
             
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16))
                 setBackgroundResource(R.drawable.bg_card)
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                lp.bottomMargin = dpToPx(12)
+                lp.bottomMargin = dpToPx(16)
                 layoutParams = lp
-                elevation = dpToPx(0).toFloat()
+                elevation = 0f
             }
 
-            val row1 = LinearLayout(this).apply { 
+            // Header: Name and Total
+            val headerRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            val nameTv = TextView(this).apply { 
-                text = labour?.name ?: "Unknown"
-                textSize = 15f
+            val nameTv = TextView(this).apply {
+                text = labour.name
+                textSize = 17f
                 setTextColor(Color.parseColor("#101828"))
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
-            val amountTv = TextView(this).apply {
-                text = "SAR ${adv.amount.toInt()}"
+            val totalTv = TextView(this).apply {
+                text = "Total: SAR ${totalForLabour.toInt()}"
                 textSize = 16f
-                setTextColor(Color.parseColor("#D92D20"))
+                setTextColor(Color.parseColor("#12B76A"))
                 setTypeface(null, android.graphics.Typeface.BOLD)
             }
-            row1.addView(nameTv); row1.addView(amountTv)
+            headerRow.addView(nameTv)
+            headerRow.addView(totalTv)
+            card.addView(headerRow)
 
-            val typeDisplayName = when(labour?.labourType) {
+            val typeDisplayName = when(labour.labourType) {
                 "CONTRACT" -> getString(R.string.labour_type_contract)
                 "PRODUCTION_BASED" -> getString(R.string.labour_type_production)
                 "MONTHLY" -> getString(R.string.labour_type_monthly)
                 else -> getString(R.string.labour_type_daily)
             }
-
+            val groupName = if (group?.id == 1) getString(R.string.group_general) else group?.name ?: ""
+            
             val detailsTv = TextView(this).apply {
-                val groupName = if (group?.id == 1) getString(R.string.group_general) else group?.name ?: ""
-                text = "$typeDisplayName • $groupName • ${adv.date}"
+                text = "$typeDisplayName • $groupName"
                 textSize = 12f
                 setTextColor(Color.parseColor("#475467"))
-                setPadding(0, dpToPx(4), 0, 0)
+                setPadding(0, dpToPx(2), 0, dpToPx(12))
             }
+            card.addView(detailsTv)
 
-            val sourceTv = TextView(this).apply {
-                text = "Paid from: ${adv.sourceName ?: "-"}"
-                textSize = 11f
-                setTextColor(Color.parseColor("#667085"))
-                setPadding(0, dpToPx(4), 0, 0)
-            }
+            // Divider
+            card.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(1))
+                setBackgroundColor(Color.parseColor("#EAECF0"))
+            })
 
-            if (!adv.description.isNullOrEmpty()) {
-                val remarksTv = TextView(this).apply {
-                    text = adv.description
-                    textSize = 13f
-                    setTextColor(Color.parseColor("#344054"))
-                    setPadding(0, dpToPx(10), 0, 0)
-                    setTypeface(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.NORMAL)
+            // Entries
+            labourAdvances.sortedByDescending { it.date }.forEach { adv ->
+                val entryLayout = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(0, dpToPx(10), 0, dpToPx(10))
                 }
-                card.addView(row1)
-                card.addView(detailsTv)
-                card.addView(sourceTv)
-                card.addView(remarksTv)
-            } else {
-                card.addView(row1)
-                card.addView(detailsTv)
-                card.addView(sourceTv)
+
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+
+                val dateTv = TextView(this).apply {
+                    text = adv.date
+                    textSize = 14f
+                    setTextColor(Color.parseColor("#344054"))
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                }
+
+                val amountTv = TextView(this).apply {
+                    text = "SAR ${adv.amount.toInt()}"
+                    textSize = 14f
+                    setTextColor(Color.parseColor("#D92D20"))
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                }
+                row.addView(dateTv)
+                row.addView(amountTv)
+                entryLayout.addView(row)
+
+                if (!adv.description.isNullOrEmpty()) {
+                    val descTv = TextView(this).apply {
+                        text = adv.description
+                        textSize = 13f
+                        setTextColor(Color.parseColor("#475467"))
+                        setPadding(0, dpToPx(2), 0, 0)
+                    }
+                    entryLayout.addView(descTv)
+                }
+
+                val sourceTv = TextView(this).apply {
+                    text = "Paid from: ${adv.sourceName ?: "-"}"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#98A2B3"))
+                    setPadding(0, dpToPx(2), 0, 0)
+                }
+                entryLayout.addView(sourceTv)
+
+                card.addView(entryLayout)
             }
             
             containerReport.addView(card)
@@ -416,36 +455,59 @@ class AdvanceReportActivity : AppCompatActivity() {
     }
 
     private fun buildHtmlReport(advances: List<DatabaseHelper.AdvanceRecord>, labours: List<DatabaseHelper.Labour>, groups: List<DatabaseHelper.Group>, start: String, end: String): String {
-        val rows = advances.sortedByDescending { it.date }.joinToString("") { adv ->
-            val labour = labours.find { it.id == adv.labourId }
-            val groupName = groups.find { it.id == labour?.groupId }?.let { if(it.id==1) getString(R.string.group_general) else it.name } ?: ""
-            val typeDisplayName = when(labour?.labourType) {
+        val advancesByLabour = advances.groupBy { it.labourId }
+        
+        // Iterate through all labours to maintain their display order
+        val labourSections = labours.mapNotNull { labour ->
+            val labourAdvances = advancesByLabour[labour.id] ?: return@mapNotNull null
+            
+            val groupName = groups.find { it.id == labour.groupId }?.let { if(it.id==1) getString(R.string.group_general) else it.name } ?: ""
+            val typeDisplayName = when(labour.labourType) {
                 "CONTRACT" -> getString(R.string.labour_type_contract)
                 "PRODUCTION_BASED" -> getString(R.string.labour_type_production)
                 "MONTHLY" -> getString(R.string.labour_type_monthly)
                 else -> getString(R.string.labour_type_daily)
             }
-            "<tr><td>${adv.date}</td><td>${labour?.name?.htmlEncode()}</td><td>$typeDisplayName</td><td>$groupName</td><td>SAR ${adv.amount.toInt()}</td><td>${adv.sourceName?.htmlEncode() ?: "-"}</td><td>${adv.description?.htmlEncode() ?: "-"}</td></tr>"
-        }
+            val totalForLabour = labourAdvances.sumOf { it.amount }.toInt()
+
+            val rows = labourAdvances.sortedByDescending { it.date }.joinToString("") { adv ->
+                "<tr><td style='padding-left: 20px;'>${adv.date}</td><td>${adv.sourceName?.htmlEncode() ?: "-"}</td><td>${adv.description?.htmlEncode() ?: "-"}</td><td style='text-align: right;'>SAR ${adv.amount.toInt()}</td></tr>"
+            }
+
+            """
+            <div class="labour-section">
+                <div class="labour-header">
+                    <span>${labour.name.htmlEncode()} ($typeDisplayName - $groupName)</span>
+                    <span style="float: right;">Total: SAR $totalForLabour</span>
+                </div>
+                <table>
+                    <thead><tr><th style='width: 100px;'>Date</th><th style='width: 120px;'>Source</th><th>Description</th><th style='width: 80px; text-align: right;'>Amount</th></tr></thead>
+                    <tbody>$rows</tbody>
+                </table>
+            </div>
+            """.trimIndent()
+        }.joinToString("")
 
         return """
             <html><head><style>
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: left; font-size: 12px; }
-            th { background-color: #002B4E; color: white; }
+            body { font-family: sans-serif; color: #101828; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            th, td { border: 1px solid #EAECF0; padding: 8px; text-align: left; font-size: 11px; }
+            th { background-color: #F9FAFB; color: #475467; }
             h1, h2 { text-align: center; color: #002B4E; margin-bottom: 5px; }
-            .summary { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; margin-top: 20px; }
+            .labour-section { margin-top: 25px; border: 1px solid #EAECF0; border-radius: 8px; overflow: hidden; }
+            .labour-header { background-color: #F2F4F7; padding: 10px 15px; font-weight: bold; font-size: 13px; border-bottom: 1px solid #EAECF0; }
+            .summary { background: #F9FAFB; padding: 20px; border: 1px solid #EAECF0; margin-top: 30px; border-radius: 8px; }
             </style></head><body>
             <h1>Labour Advances Report</h1>
-            <h2>Period: $start to $end</h2>
-            <table>
-            <thead><tr><th>Date</th><th>Name</th><th>Type</th><th>Group</th><th>Amount</th><th>Paid From</th><th>Remarks</th></tr></thead>
-            <tbody>$rows</tbody>
-            </table>
+            <h2 style="font-size: 14px; font-weight: normal; color: #667085;">Period: $start to $end</h2>
+            
+            $labourSections
+
             <div class="summary">
-            <h3>Summary</h3>
-            <p><strong>Total Amount:</strong> SAR ${advances.sumOf { it.amount }.toInt()}</p>
-            <p><strong>Total Labourers:</strong> ${advances.map { it.labourId }.distinct().size}</p>
+                <h3 style="margin-top: 0;">Overall Summary</h3>
+                <p><strong>Total Distributed:</strong> SAR ${advances.sumOf { it.amount }.toInt()}</p>
+                <p><strong>Unique Labourers:</strong> ${advances.map { it.labourId }.distinct().size}</p>
             </div>
             </body></html>
         """.trimIndent()

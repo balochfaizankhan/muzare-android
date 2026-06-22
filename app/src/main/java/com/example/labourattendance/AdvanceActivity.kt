@@ -127,7 +127,7 @@ class AdvanceActivity : AppCompatActivity() {
         inputSection.findViewById<TextView>(R.id.dialog_message).visibility = View.GONE
 
         // Default to today's date
-        buttonSelectDate.text = "${getString(R.string.btn_select_date)}: ${getUiDateFormat().format(calendar.time)}"
+        buttonSelectDate.text = getUiDateFormat().format(calendar.time)
         buttonSelectDate.setBackgroundResource(R.drawable.bg_button_primary)
         buttonSelectDate.setTextColor(Color.WHITE)
 
@@ -136,10 +136,10 @@ class AdvanceActivity : AppCompatActivity() {
             text = getString(R.string.btn_save_advance)
             setBackgroundResource(R.drawable.bg_button_primary)
             setTextColor(Color.WHITE)
-            setPadding(0, dpToPx(12), 0, dpToPx(12))
+            setPadding(0, dpToPx(10), 0, dpToPx(10))
             isAllCaps = false
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(0, dpToPx(12), 0, dpToPx(24))
+                setMargins(0, dpToPx(8), 0, dpToPx(12))
             }
         }
 
@@ -271,7 +271,7 @@ class AdvanceActivity : AppCompatActivity() {
     private fun showDatePicker() {
         DatePickerDialog(this, { _, y, m, d ->
             calendar.set(y, m, d)
-            buttonSelectDate.text = "${getString(R.string.btn_select_date)}: ${getUiDateFormat().format(calendar.time)}"
+            buttonSelectDate.text = getUiDateFormat().format(calendar.time)
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
@@ -303,49 +303,97 @@ class AdvanceActivity : AppCompatActivity() {
         textViewHistoryTitle.text = "${getString(R.string.title_recent_history)} (${getString(R.string.report_sar)} ${totalAmount.toInt()})"
 
         history.forEach { record ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dpToPx(12), dpToPx(12), dpToPx(12), dpToPx(12))
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dpToPx(14), dpToPx(10), dpToPx(14), dpToPx(10))
                 setBackgroundResource(R.drawable.bg_card)
                 val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                 lp.bottomMargin = dpToPx(8)
                 layoutParams = lp
             }
 
-            val parsedDate = dbDateFormat.parse(record.date)
-            val displayDate = if (parsedDate != null) getUiDateFormat().format(parsedDate) else record.date
-            val sourceText = if (!record.sourceName.isNullOrEmpty()) "\n[${record.sourceName}]" else ""
+            // Row 1: Name and Source Chip
+            val row1 = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
 
-            val info = TextView(this).apply {
-                text = "${record.labourName ?: "Unknown"}\n$displayDate: SAR ${record.amount.toInt()}$sourceText${if (!record.description.isNullOrEmpty()) "\n${record.description}" else ""}"
+            val nameTv = TextView(this).apply {
+                text = record.labourName ?: "Unknown"
                 setTextColor(Color.parseColor("#101828"))
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                textSize = 15f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
-            row.addView(info)
-            
+
+            val sourceChip = TextView(this).apply {
+                if (!record.sourceName.isNullOrEmpty()) {
+                    text = record.sourceName
+                    textSize = 10f
+                    setTextColor(Color.parseColor("#475467"))
+                    setPadding(dpToPx(8), dpToPx(2), dpToPx(8), dpToPx(2))
+                    setBackgroundResource(R.drawable.bg_badge) // Assuming this is the light gray badge
+                    backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#F2F4F7"))
+                } else {
+                    visibility = View.GONE
+                }
+            }
+
+            row1.addView(nameTv)
+            row1.addView(sourceChip)
+
+            // Row 2: Date, Amount, Edit, Delete
+            val row2 = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dpToPx(4), 0, 0)
+            }
+
+            val parsedDate = dbDateFormat.parse(record.date)
+            val displayDate = if (parsedDate != null) getUiDateFormat().format(parsedDate) else record.date
+
+            val dateTv = TextView(this).apply {
+                text = displayDate
+                setTextColor(Color.parseColor("#667085"))
+                textSize = 12f
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+
+            val amountTv = TextView(this).apply {
+                text = "SAR ${record.amount.toInt()}"
+                setTextColor(Color.parseColor("#101828"))
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                textSize = 14f
+                setPadding(0, 0, dpToPx(12), 0)
+            }
+
+            row2.addView(dateTv)
+            row2.addView(amountTv)
+
             val role = getSharedPreferences("Settings", MODE_PRIVATE).getString("User_Role", "viewer")
             val isClosed = databaseHelper.isCurrentSeasonClosed()
+            
             if (role != "viewer" && !isClosed) {
-                val edit = Button(this).apply {
-                    text = getString(R.string.btn_update)
-                    textSize = 10f
-                    minHeight = 0
-                    minWidth = 0
-                    setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
-                    background = null
-                    setTextColor(Color.parseColor("#004EEB"))
-                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                    setOnClickListener {
-                        showEditAdvanceDialog(record)
-                    }
+                // Edit Button (Icon)
+                val editTv = TextView(this).apply {
+                    text = "✏️"
+                    textSize = 14f
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(dpToPx(36), dpToPx(36))
+                    setBackgroundResource(TypedValue().apply { context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, this, true) }.resourceId)
+                    setOnClickListener { showEditAdvanceDialog(record) }
                 }
 
-                val del = Button(this).apply {
-                    text = "X"
-                    setTextColor(Color.RED)
-                    background = null
-                    layoutParams = LinearLayout.LayoutParams(dpToPx(40), dpToPx(40))
+                val delTv = TextView(this).apply {
+                    text = "✕"
+                    textSize = 18f
+                    setTextColor(Color.parseColor("#F04438"))
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(dpToPx(36), dpToPx(36))
+                    setBackgroundResource(TypedValue().apply { context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, this, true) }.resourceId)
                     setOnClickListener {
                         com.google.android.material.dialog.MaterialAlertDialogBuilder(this@AdvanceActivity)
                             .setTitle(R.string.title_remove_record)
@@ -358,11 +406,27 @@ class AdvanceActivity : AppCompatActivity() {
                             .show()
                     }
                 }
-                row.addView(edit)
-                row.addView(del)
+                row2.addView(editTv)
+                row2.addView(delTv)
+            }
+
+            card.addView(row1)
+            card.addView(row2)
+
+            // Row 3: Description
+            if (!record.description.isNullOrEmpty()) {
+                val descTv = TextView(this).apply {
+                    text = record.description
+                    setTextColor(Color.parseColor("#475467"))
+                    textSize = 13f
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(0, dpToPx(6), 0, 0)
+                }
+                card.addView(descTv)
             }
             
-            advanceListContainer.addView(row)
+            advanceListContainer.addView(card)
         }
     }
 
@@ -370,7 +434,6 @@ class AdvanceActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_record_advance, null)
         val title = dialogView.findViewById<TextView>(R.id.dialog_title)
         val msg = dialogView.findViewById<TextView>(R.id.dialog_message)
-        val layoutLabourSearch = dialogView.findViewById<View>(R.id.layoutLabourSearch)
         val editAmount = dialogView.findViewById<EditText>(R.id.edit_advance_amount)
         val editDesc = dialogView.findViewById<EditText>(R.id.edit_advance_description)
         val btnDate = dialogView.findViewById<Button>(R.id.button_select_date)
@@ -378,13 +441,24 @@ class AdvanceActivity : AppCompatActivity() {
 
         title.text = getString(R.string.title_update_record)
         msg.text = record.labourName
+        msg.setTextColor(Color.parseColor("#002B4E"))
+        msg.typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD)
         
         setupFundSourceSpinner(editSpinner)
         val sourceIndex = fundSources.indexOfFirst { it.id == record.sourceId }
         if (sourceIndex != -1) editSpinner.setSelection(sourceIndex)
 
-        // Completely remove the search section to collapse the gap
-        (layoutLabourSearch.parent as? ViewGroup)?.removeView(layoutLabourSearch)
+        // Find containers to adjust for edit mode
+        val containerLabourSearch = dialogView.findViewById<View>(R.id.containerLabourSearch)
+        val viewSpacerLabourAmount = dialogView.findViewById<View>(R.id.viewSpacerLabourAmount)
+        val containerAmount = dialogView.findViewById<LinearLayout>(R.id.containerAmount)
+
+        // Remove labour search and spacer to make room for full-width amount
+        (containerLabourSearch?.parent as? ViewGroup)?.removeView(containerLabourSearch)
+        (viewSpacerLabourAmount?.parent as? ViewGroup)?.removeView(viewSpacerLabourAmount)
+        
+        // Make amount container take full width
+        containerAmount?.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         
         editAmount.setText(record.amount.toInt().toString())
         editDesc.setText(record.description)
@@ -393,17 +467,17 @@ class AdvanceActivity : AppCompatActivity() {
         val parsedDate = dbDateFormat.parse(record.date)
         if (parsedDate != null) editCalendar.time = parsedDate
         
-        btnDate.text = "${getString(R.string.btn_select_date)}: ${getUiDateFormat().format(editCalendar.time)}"
+        btnDate.text = getUiDateFormat().format(editCalendar.time)
         btnDate.setTextColor(Color.WHITE)
         btnDate.setBackgroundResource(R.drawable.bg_button_primary)
         btnDate.setOnClickListener {
             DatePickerDialog(this, { _, y, m, d ->
                 editCalendar.set(y, m, d)
-                btnDate.text = "${getString(R.string.btn_select_date)}: ${getUiDateFormat().format(editCalendar.time)}"
+                btnDate.text = getUiDateFormat().format(editCalendar.time)
             }, editCalendar.get(Calendar.YEAR), editCalendar.get(Calendar.MONTH), editCalendar.get(Calendar.DAY_OF_MONTH)).show()
         }
 
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.AppAlertDialogTheme)
             .setView(dialogView)
             .setPositiveButton(R.string.btn_update) { _, _ ->
                 val newAmount = editAmount.text.toString().toDoubleOrNull() ?: record.amount

@@ -49,6 +49,7 @@
     <string name="no_labour_available">منتخب مدت کے لیے کوئی ریکارڈ نہیں ملا۔</string>
     <string name="report_range_summary">مدت: %1$s – %2$s\nحاضر: %3$d  |  نصف: %4$d  |  غیر حاضر: %5$d  |  ایڈوانس: %6$d SAR</string>
     <string name="summary_counts">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  ایڈوانس: %4$d SAR</string>
+    <string name="report_individual_summary_payable">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  واجب الادا: %4$d SAR</string>
     <string name="report_individual_summary">حاضر: %1$d  |  نصف: %2$d  |  غائب: %3$d  |  ایڈوانس: %4$d SAR</string>
     <!-- Advance History -->
     <string name="title_recent_history">حالیہ ریکارڈ</string>
@@ -89,6 +90,8 @@
     <string name="metric_half">کل ہاف ڈے</string>
     <string name="metric_absent">کل غیر حاضر</string>
     <string name="metric_advance">کل ایڈوانس</string>
+    <string name="metric_payable">کل واجب الادا</string>
+    <string name="label_payable">واجب الادا</string>
     <string name="metric_total_labours">کل مزدور</string>
     <string name="metric_active_labours">فعال مزدور</string>
     <string name="metric_inactive_labours">غیر فعال مزدور</string>
@@ -163,6 +166,10 @@
     <string name="group_general">جنرل</string>
     <string name="label_join_date">شامل ہونے کی تاریخ</string>
     <string name="label_end_date">ختم ہونے کی تاریخ</string>
+    <string name="label_paid_from_caps">پیڈ فرام</string>
+    <string name="label_labour_caps">مزدور</string>
+    <string name="label_amount_caps">رقم</string>
+    <string name="btn_select_date_caps">تاریخ منتخب کریں</string>
     <string name="label_status">اسٹیٹس</string>
     <string name="status_active">فعال</string>
     <string name="status_inactive">غیر فعال</string>

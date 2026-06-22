@@ -74,10 +74,11 @@ class ReportActivity : AppCompatActivity() {
             Metric(0, getString(R.string.metric_present), getString(R.string.status_present), "#12B76A"),
             Metric(1, getString(R.string.metric_half), getString(R.string.status_half), "#FDB022"),
             Metric(2, getString(R.string.metric_absent), getString(R.string.status_absent), "#F04438"),
-            Metric(3, getString(R.string.metric_advance), getString(R.string.report_adv), "#101828"),
+            Metric(3, getString(R.string.metric_payable), getString(R.string.label_payable), "#12B76A"),
             Metric(4, getString(R.string.metric_total_labours), getString(R.string.metric_total_labours), "#101828"),
             Metric(5, getString(R.string.metric_active_labours), getString(R.string.status_active), "#12B76A"),
-            Metric(6, getString(R.string.metric_inactive_labours), getString(R.string.status_inactive), "#F04438")
+            Metric(6, getString(R.string.metric_inactive_labours), getString(R.string.status_inactive), "#F04438"),
+            Metric(7, getString(R.string.metric_advance), getString(R.string.report_adv), "#101828")
         )
     }
 
@@ -218,7 +219,7 @@ class ReportActivity : AppCompatActivity() {
         totalPresent: Int,
         totalHalf: Int,
         totalAbsent: Int,
-        totalAdvance: Double,
+        totalPayable: Double,
         totalLabours: Int,
         activeLabours: Int,
         inactiveLabours: Int
@@ -242,10 +243,11 @@ class ReportActivity : AppCompatActivity() {
                     0 -> totalPresent.toString()
                     1 -> totalHalf.toString()
                     2 -> totalAbsent.toString()
-                    3 -> totalAdvance.toInt().toString()
+                    3 -> totalPayable.toInt().toString()
                     4 -> totalLabours.toString()
                     5 -> activeLabours.toString()
                     6 -> inactiveLabours.toString()
+                    7 -> "0" // Advances hidden from this register
                     else -> "-"
                 }
             }
@@ -365,10 +367,8 @@ class ReportActivity : AppCompatActivity() {
         
         val dateList = buildDateList(fromDate, toDate)
         val attendanceEntries = databaseHelper.getAttendanceEntries(fromDate, toDate)
-        val advances = databaseHelper.getAdvancesInRange(fromDate, toDate)
         
         val statusMap = mutableMapOf<Int, MutableMap<String, String>>()
-        val advanceMap = mutableMapOf<Int, MutableMap<String, Double>>()
         val dailyPresentCounts = mutableMapOf<String, Double>()
 
         for (entry in attendanceEntries) {
@@ -383,28 +383,22 @@ class ReportActivity : AppCompatActivity() {
                 dailyPresentCounts[entry.date] = (dailyPresentCounts[entry.date] ?: 0.0) + statusValue
             }
         }
-        
-        for (adv in advances) {
-            val labourAdvanceMap = advanceMap.getOrPut(adv.labourId) { mutableMapOf() }
-            labourAdvanceMap[adv.date] = (labourAdvanceMap[adv.date] ?: 0.0) + adv.amount
-        }
 
-        // Filter: Show labour if they were active during period OR have data (attendance/advances)
+        // Filter: Show labour only if they have attendance data (P, H, or A) in the selected range
         val filteredLabourList = allLabours.filter { labour ->
-            val hasData = statusMap.containsKey(labour.id) || advanceMap.containsKey(labour.id)
-            val wasActiveDuringPeriod = (labour.joinDate.isNullOrBlank() || labour.joinDate!! <= toDate) && (labour.endDate.isNullOrBlank() || labour.endDate!! >= fromDate)
+            val hasAttendance = statusMap.containsKey(labour.id)
             
             val matchesSearch = currentSearchQuery.isEmpty() || labour.name.contains(currentSearchQuery, ignoreCase = true)
             val matchesType = currentType == "ALL" || labour.labourType == currentType
             
-            matchesSearch && matchesType && (hasData || wasActiveDuringPeriod)
+            matchesSearch && matchesType && hasAttendance
         }
 
         if (filteredLabourList.isEmpty()) {
             tvSummaryPresent.text = "0"
             tvSummaryHalf.text = "0"
             tvSummaryAbsent.text = "0"
-            tvSummaryAdvance.text = "0"
+            tvSummaryAdvance.text = "0" // This slot can be used for Total Payable if we rename it in UI, but for now we keep it
             lastReportHtml = null
             lastPdfLines = emptyList()
             addEmptyMessage(
@@ -420,7 +414,7 @@ class ReportActivity : AppCompatActivity() {
         var totalPresent = 0
         var totalHalf = 0
         var totalAbsent = 0
-        var totalAdvance = 0.0
+        var grandTotalPayable = 0.0
         val pdfLines = mutableListOf(
             "Labour Attendance Report",
             "From: ${getUiDateFormat().format(fromCalendar.time)}",
@@ -430,17 +424,18 @@ class ReportActivity : AppCompatActivity() {
 
         filteredLabourList.forEachIndexed { index, labour ->
             val labourStatuses = statusMap[labour.id].orEmpty()
-            val labourAdvances = advanceMap[labour.id].orEmpty()
             
             val pCount = labourStatuses.values.count { it == "P" }
             val hCount = labourStatuses.values.count { it == "H" }
             val aCount = labourStatuses.values.count { it == "A" }
-            val labourTotalAdvance = labourAdvances.values.sum()
+            
+            val wage = labour.wage
+            val totalPayable = (pCount * wage) + (hCount * (wage / 2))
             
             totalPresent += pCount
             totalHalf += hCount
             totalAbsent += aCount
-            totalAdvance += labourTotalAdvance
+            grandTotalPayable += totalPayable
 
             val reportCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -468,13 +463,14 @@ class ReportActivity : AppCompatActivity() {
             }
 
             val summaryView = TextView(this).apply {
-                text = getString(R.string.report_individual_summary, pCount, hCount, aCount, labourTotalAdvance.toInt())
+                text = getString(R.string.report_individual_summary_payable, pCount, hCount, aCount, totalPayable.toInt())
                 textSize = 14f
                 setTextColor("#243B53".toColorInt())
                 setPadding(0, dpToPx(10), 0, dpToPx(6))
+                setTypeface(null, android.graphics.Typeface.BOLD)
             }
 
-            val statusLine = buildStatusLine(dateList, labourStatuses, labourAdvances)
+            val statusLine = buildStatusLine(dateList, labourStatuses)
             val statusView = TextView(this).apply {
                 text = statusLine
                 textSize = 13f
@@ -489,8 +485,7 @@ class ReportActivity : AppCompatActivity() {
             reportContainer.addView(reportCard)
 
             pdfLines.add("${index + 1}. ${labour.name}")
-            pdfLines.add("P: $pCount  1/2: $hCount  A: $aCount" + 
-                (if (labourTotalAdvance > 0) "  ${getString(R.string.report_adv)}: ${getString(R.string.report_sar)} ${labourTotalAdvance.toInt()}" else ""))
+            pdfLines.add("P: $pCount  1/2: $hCount  A: $aCount  Payable: SAR ${totalPayable.toInt()}")
             pdfLines.add(statusLine)
             pdfLines.add("")
         }
@@ -500,58 +495,55 @@ class ReportActivity : AppCompatActivity() {
         val activeLaboursCount = filteredLabourList.count { it.endDate.isNullOrBlank() || it.endDate!! >= todayStr }
         val inactiveLaboursCount = totalLaboursCount - activeLaboursCount
 
-        updateSummaryWidgets(totalPresent, totalHalf, totalAbsent, totalAdvance, totalLaboursCount, activeLaboursCount, inactiveLaboursCount)
+        // We pass grandTotalPayable into the slot that was previously for totalAdvance
+        updateSummaryWidgets(totalPresent, totalHalf, totalAbsent, grandTotalPayable, totalLaboursCount, activeLaboursCount, inactiveLaboursCount)
 
         pdfLines.add("${getString(R.string.status_present)}: $totalPresent")
         pdfLines.add("${getString(R.string.status_half)}: $totalHalf")
         pdfLines.add("${getString(R.string.status_absent)}: $totalAbsent")
-        if (totalAdvance > 0) pdfLines.add("${getString(R.string.report_advance_total)} ${getString(R.string.report_sar)} ${totalAdvance.toInt()}")
+        pdfLines.add("Total Payable: ${getString(R.string.report_sar)} ${grandTotalPayable.toInt()}")
 
         lastPdfLines = pdfLines
-        lastReportHtml = buildReportHtml(filteredLabourList, dateList, statusMap, advanceMap, totalPresent, totalHalf, totalAbsent, totalAdvance.toInt().toDouble(), dailyPresentCounts)
-        lastReportData = buildReportCsv(filteredLabourList, dateList, statusMap, advanceMap, totalPresent, totalHalf, totalAbsent, totalAdvance)
+        lastReportHtml = buildReportHtml(filteredLabourList, dateList, statusMap, totalPresent, totalHalf, totalAbsent, grandTotalPayable, dailyPresentCounts)
+        lastReportData = buildReportCsv(filteredLabourList, dateList, statusMap, totalPresent, totalHalf, totalAbsent, grandTotalPayable)
     }
 
     private fun buildReportCsv(
         labourList: List<DatabaseHelper.Labour>,
         dateList: List<String>,
         statusMap: Map<Int, Map<String, String>>,
-        advanceMap: Map<Int, Map<String, Double>>,
         totalPresent: Int,
         totalHalf: Int,
         totalAbsent: Int,
-        totalAdvance: Double
+        totalPayable: Double
     ): String {
         val sb = StringBuilder()
         sb.append("Labour Attendance Report\n")
         sb.append("From:,${dbDateFormat.format(fromCalendar.time)},To:,${dbDateFormat.format(toCalendar.time)}\n\n")
         
         val dateCols = dateList.joinToString(",")
-        sb.append("#,Labour Name,P,1/2,A,Adv (SAR),$dateCols\n")
+        sb.append("#,Labour Name,P,1/2,A,Wage,Total Payable (SAR),$dateCols\n")
 
         labourList.forEachIndexed { index, labour ->
             val statuses = statusMap[labour.id].orEmpty()
-            val advances = advanceMap[labour.id].orEmpty()
             
             val pCount = statuses.values.count { it == "P" }
             val hCount = statuses.values.count { it == "H" }
             val aCount = statuses.values.count { it == "A" }
-            val totalAdv = advances.values.sum().toInt()
+            val individualPayable = (pCount * labour.wage) + (hCount * (labour.wage / 2))
             
             val dailyStatuses = dateList.joinToString(",") { date ->
-                val s = statuses[date] ?: "-"
-                val a = advances[date]
-                if (a != null && a > 0) "$s (Adv:${a.toInt()})" else s
+                statuses[date] ?: "-"
             }
 
-            sb.append("${index + 1},${labour.name},$pCount,$hCount,$aCount,$totalAdv,$dailyStatuses\n")
+            sb.append("${index + 1},${labour.name},$pCount,$hCount,$aCount,${labour.wage},$individualPayable,$dailyStatuses\n")
         }
 
         sb.append("\nGRAND TOTALS,,,,\n")
         sb.append(",Total P:,$totalPresent\n")
         sb.append(",Total 1/2:,$totalHalf\n")
         sb.append(",Total A:,$totalAbsent\n")
-        sb.append(",Total Advance:,$totalAdvance\n")
+        sb.append(",Grand Total Payable:,$totalPayable\n")
 
         return sb.toString()
     }
@@ -618,7 +610,7 @@ class ReportActivity : AppCompatActivity() {
         reportContainer.addView(textView)
     }
 
-    private fun buildStatusLine(dateList: List<String>, labourStatuses: Map<String, String>, labourAdvances: Map<String, Double>): String {
+    private fun buildStatusLine(dateList: List<String>, labourStatuses: Map<String, String>): String {
         return dateList.joinToString("   ") { date ->
             val parsedDate = dbDateFormat.parse(date)
             val displayDate = if (parsedDate != null) getUiDateFormat().format(parsedDate) else date
@@ -629,8 +621,7 @@ class ReportActivity : AppCompatActivity() {
                 "A" -> "A"
                 else -> "-"
             }
-            val adv = labourAdvances[date]
-            if (adv != null && adv > 0) "$displayDate: $status (SAR ${adv.toInt()})" else "$displayDate: $status"
+            "$displayDate: $status"
         }
     }
 
@@ -651,11 +642,10 @@ class ReportActivity : AppCompatActivity() {
         labourList: List<DatabaseHelper.Labour>,
         dateList: List<String>,
         statusMap: Map<Int, Map<String, String>>,
-        advanceMap: Map<Int, Map<String, Double>>,
         totalPresent: Int,
         totalHalf: Int,
         totalAbsent: Int,
-        totalAdvance: Double,
+        grandTotalPayable: Double,
         dailyPresentCounts: Map<String, Double>
     ): String {
         val dateHeaders = dateList.joinToString("") { date ->
@@ -675,12 +665,11 @@ class ReportActivity : AppCompatActivity() {
 
         val rows = labourList.mapIndexed { index, labour ->
             val labourStatuses = statusMap[labour.id].orEmpty()
-            val labourAdvances = advanceMap[labour.id].orEmpty()
             
             val presentCount = labourStatuses.values.count { it == "P" }
             val halfCount = labourStatuses.values.count { it == "H" }
             val absentCount = labourStatuses.values.count { it == "A" }
-            val labourTotalAdvance = labourAdvances.values.sum()
+            val totalPayable = (presentCount * labour.wage) + (halfCount * (labour.wage / 2))
             
             val dailyStatuses = dateList.joinToString("") { date ->
                 val status = labourStatuses[date]
@@ -691,9 +680,6 @@ class ReportActivity : AppCompatActivity() {
                     else -> "-"
                 }
                 
-                val adv = labourAdvances[date]
-                val advValue = if (adv != null && adv > 0) adv.toInt().toString() else "&nbsp;"
-                
                 val bgColor = when (status) {
                     "P" -> "#12B76A" // Green
                     "H" -> "#FDB022" // Yellow
@@ -701,12 +687,10 @@ class ReportActivity : AppCompatActivity() {
                     else -> "transparent"
                 }
                 val textColor = if (status == "H") "#101828" else if (status != null) "white" else "inherit"
-                val borderStyle = if (status != null) "1px solid rgba(255,255,255,0.3)" else "1px solid rgba(0,0,0,0.05)"
                 
                 """
                 <td class="col-date" style="background-color: $bgColor; color: $textColor; font-weight: bold; padding: 0;">
-                    <div style="font-size: 9px; line-height: 1.2; padding-top: 2px;">$statusText</div>
-                    <div style="font-size: 7px; line-height: 1.2; border-top: $borderStyle; padding-bottom: 2px;">$advValue</div>
+                    <div style="font-size: 10px; line-height: 2.2;">$statusText</div>
                 </td>
                 """.trimIndent()
             }
@@ -718,7 +702,7 @@ class ReportActivity : AppCompatActivity() {
                 <td style="color: #12B76A; font-weight: bold;">$presentCount</td>
                 <td style="color: #FDB022; font-weight: bold;">$halfCount</td>
                 <td style="color: #F04438; font-weight: bold;">$absentCount</td>
-                <td style="font-weight: bold;">${if (labourTotalAdvance > 0) "${getString(R.string.report_sar)} ${labourTotalAdvance.toInt()}" else "-"}</td>
+                <td style="font-weight: bold; color: #12B76A;">${getString(R.string.report_sar)} ${totalPayable.toInt()}</td>
                 $dailyStatuses
             </tr>
             """.trimIndent()
@@ -744,7 +728,7 @@ class ReportActivity : AppCompatActivity() {
                     .col-num { width: 24px; }
                     .col-name { width: 90px; text-align: left; }
                     .col-summary { width: 26px; }
-                    .col-adv { width: 40px; }
+                    .col-adv { width: 45px; }
                 </style>
             </head>
             <body>
@@ -755,20 +739,20 @@ class ReportActivity : AppCompatActivity() {
                     <span style="color: #12B76A;">P: $totalPresent</span> | 
                     <span style="color: #FDB022;">1/2: $totalHalf</span> | 
                     <span style="color: #F04438;">A: $totalAbsent</span> |
-                    <strong>${getString(R.string.report_advance_total)} ${getString(R.string.report_sar)} ${totalAdvance.toInt()}</strong>
+                    <strong style="color: #12B76A;">${getString(R.string.label_payable)}: ${getString(R.string.report_sar)} ${grandTotalPayable.toInt()}</strong>
                 </div>
                 <table>
                     <tr>
                         <th rowspan="2" class="col-num">#</th>
                         <th rowspan="2" class="col-name">${getString(R.string.report_labour_name)}</th>
-                        <th colspan="4">${getString(R.string.report_financial_summary)}</th>
+                        <th colspan="4">Attendance & Earnings Summary</th>
                         <th colspan="${dateList.size}">${getString(R.string.report_daily_status)}</th>
                     </tr>
                     <tr>
                         <th style="color: #12B76A;" class="col-summary">P</th>
                         <th style="color: #FDB022;" class="col-summary">1/2</th>
                         <th style="color: #F04438;" class="col-summary">A</th>
-                        <th class="col-adv">${getString(R.string.report_adv)}</th>
+                        <th class="col-adv">${getString(R.string.label_payable)}</th>
                         $dateHeaders
                     </tr>
                     $rows
@@ -777,7 +761,7 @@ class ReportActivity : AppCompatActivity() {
                         <td class="col-summary">$totalPresent</td>
                         <td class="col-summary">$totalHalf</td>
                         <td class="col-summary">$totalAbsent</td>
-                        <td class="col-adv">${totalAdvance.toInt()}</td>
+                        <td class="col-adv" style="color: #12B76A;">${grandTotalPayable.toInt()}</td>
                         <td colspan="${dateList.size}"></td>
                     </tr>
                     <tr class="summary-header">
