@@ -22,6 +22,13 @@
     <string name="btn_adv_report">Advance Report</string>
     <string name="btn_backup">Backup</string>
     <string name="btn_restore">Restore</string>
+    <string name="action_export_json">Export Migration JSON</string>
+    <string name="action_export_pwa_json">Export for PWA Import</string>
+    <string name="title_export_ready">Export Ready</string>
+    <string name="label_export_file_path">File Path</string>
+    <string name="label_validation_status">Validation</string>
+    <string name="validation_passed">Passed</string>
+    <string name="btn_share">Share</string>
 
     <!-- Advance Dialog -->
     <string name="title_record_advance">Record Advance</string>

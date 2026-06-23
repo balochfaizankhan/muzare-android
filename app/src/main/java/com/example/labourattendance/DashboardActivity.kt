@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat
 import android.graphics.Color
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import androidx.core.content.FileProvider
 import com.example.labourattendance.databinding.ActivityDashboardBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
@@ -262,6 +263,14 @@ class DashboardActivity : AppCompatActivity() {
                 restoreLauncher.launch(arrayOf("*/*"))
                 true
             }
+            R.id.action_export_json -> {
+                exportMigrationJson()
+                true
+            }
+            R.id.action_export_pwa_json -> {
+                exportPwaImportJson()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -323,6 +332,81 @@ class DashboardActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun exportMigrationJson() {
+        try {
+            val json = databaseHelper.exportMigrationJson()
+            val fileName = "muzare_migration_${System.currentTimeMillis()}.json"
+            val file = File(cacheDir, fileName)
+            
+            FileOutputStream(file).use { 
+                it.write(json.toByteArray())
+            }
+
+            val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+            
+            val intent = Intent(Intent.ACTION_SEND)
+            intent.type = "application/json"
+            intent.putExtra(Intent.EXTRA_STREAM, uri)
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            
+            startActivity(Intent.createChooser(intent, "Export Migration JSON"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Export Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun exportPwaImportJson() {
+        try {
+            val export = databaseHelper.exportPwaImportJson()
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val file = File(cacheDir, "muzare_migration_v2_${timestamp}.json")
+
+            FileOutputStream(file).use {
+                it.write(export.json.toByteArray(Charsets.UTF_8))
+            }
+
+            showExportResultDialog(file, export.summary)
+        } catch (e: Exception) {
+            Toast.makeText(this, "PWA export failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showExportResultDialog(file: File, summary: Map<String, Int>) {
+        val summaryText = buildString {
+            summary.forEach { (key, value) ->
+                appendLine("$key: $value")
+            }
+        }.trim()
+
+        val message = buildString {
+            appendLine("${getString(R.string.label_export_file_path)}:")
+            appendLine(file.absolutePath)
+            appendLine()
+            appendLine("${getString(R.string.label_validation_status)}: ${getString(R.string.validation_passed)}")
+            appendLine()
+            append(summaryText)
+        }
+
+        MaterialAlertDialogBuilder(this, R.style.AppAlertDialogTheme)
+            .setTitle(R.string.title_export_ready)
+            .setMessage(message)
+            .setPositiveButton(R.string.btn_share) { _, _ ->
+                shareExportFile(file, "Export for PWA Import")
+            }
+            .setNegativeButton(R.string.btn_close, null)
+            .show()
+    }
+
+    private fun shareExportFile(file: File, chooserTitle: String) {
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, chooserTitle))
     }
 
     private fun backupDatabase(uri: Uri) {

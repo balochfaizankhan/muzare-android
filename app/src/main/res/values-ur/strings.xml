@@ -16,6 +16,13 @@
     <string name="btn_adv_report">ایڈوانس رپورٹ</string>
     <string name="btn_backup">بیک اپ</string>
     <string name="btn_restore">ریسٹور</string>
+    <string name="action_export_json">مائیگریشن JSON ایکسپورٹ کریں</string>
+    <string name="action_export_pwa_json">PWA امپورٹ کے لیے ایکسپورٹ کریں</string>
+    <string name="title_export_ready">ایکسپورٹ تیار ہے</string>
+    <string name="label_export_file_path">فائل پاتھ</string>
+    <string name="label_validation_status">ویلیڈیشن</string>
+    <string name="validation_passed">کامیاب</string>
+    <string name="btn_share">شیئر</string>
 
     <!-- Advance Dialog -->
     <string name="title_record_advance">ایڈوانس ریکارڈ کریں</string>

@@ -2,12 +2,14 @@ package com.example.labourattendance
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.util.Locale
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.TimeZone
 
 class DatabaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
@@ -309,6 +311,11 @@ class DatabaseHelper(private val context: Context) :
         val status: String
     )
 
+    data class PwaImportExport(
+        val json: String,
+        val summary: LinkedHashMap<String, Int>
+    )
+
     override fun onCreate(db: SQLiteDatabase) {
         val metadata = "$COLUMN_CREATED_AT INTEGER, $COLUMN_UPDATED_AT INTEGER, $COLUMN_DELETED_AT INTEGER, $COLUMN_SYNCED_AT INTEGER"
         
@@ -513,6 +520,630 @@ class DatabaseHelper(private val context: Context) :
     fun setCurrentFarmId(farmId: Int) {
         val prefs = context.getSharedPreferences("Settings", Context.MODE_PRIVATE)
         prefs.edit().putInt("current_farm_id", farmId).apply()
+    }
+
+    fun exportPwaImportJson(): PwaImportExport {
+        val farmsRows = getTableRows(TABLE_FARM)
+        val seasonRows = getTableRows(TABLE_SEASON)
+        val groupRows = getTableRows(TABLE_GROUP)
+        val labourRows = getTableRows(TABLE_LABOUR)
+        val fundSourceRows = getTableRows(TABLE_FUND_SOURCE)
+        val voucherRows = getTableRows(TABLE_EXP_VOUCHER)
+        val voucherItemRows = getTableRows(TABLE_EXP_ITEM, null)
+        val advanceRows = getTableRows(TABLE_ADVANCE)
+        val attendanceRows = getTableRows(TABLE_ATTENDANCE)
+        val saleRows = getTableRows(TABLE_SALE)
+        val saleItemRows = getTableRows(TABLE_SALE_ITEM, null)
+        val dispatchRows = getTableRows(TABLE_DISPATCH)
+        val dispatchItemRows = getTableRows(TABLE_DISPATCH_ITEM, null)
+        val vehicleRows = getTableRows(TABLE_VEHICLE)
+        val dateTypeRows = getTableRows(TABLE_DATE_TYPE)
+        val accountBalanceById = getAccountBalancesForExport()
+
+        val farmNameById = farmsRows.associate { row ->
+            row[ COLUMN_FARM_ID_PK ].asString() to row[COLUMN_FARM_NAME].asString().ifBlank { "Main Farm" }
+        }
+        val groupNameById = groupRows.associate { row ->
+            row[COLUMN_GROUP_ID].asString() to row[COLUMN_GROUP_NAME].asString()
+        }
+        val seasonById = seasonRows.associateBy { it[COLUMN_SEASON_ID].asString() }
+        val fundSourceById = fundSourceRows.associateBy { it[COLUMN_SOURCE_ID].asString() }
+        val vehicleById = vehicleRows.associateBy { it[COLUMN_VEHICLE_ID].asString() }
+        val dateTypeById = dateTypeRows.associateBy { it[COLUMN_DATE_TYPE_ID].asString() }
+
+        val defaultYear = Calendar.getInstance().get(Calendar.YEAR)
+        val defaultFarmId = farmsRows.firstOrNull()?.get(COLUMN_FARM_ID_PK).asString().ifBlank { "1" }
+        val fallbackSeasonId = seasonRows.firstOrNull { (it[COLUMN_SEASON_IS_ACTIVE] as? Number)?.toInt() == 1 }
+            ?.get(COLUMN_SEASON_ID).asString()
+            .ifBlank { if (seasonRows.isNotEmpty()) seasonRows.first()[COLUMN_SEASON_ID].asString() else "default-$defaultYear" }
+
+        val farmsJson = org.json.JSONArray()
+        farmsRows.forEach { row ->
+            farmsJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", row[COLUMN_FARM_ID_PK].asString())
+                put("name", row[COLUMN_FARM_NAME].asString().ifBlank { "Main Farm" })
+                put("location", row[COLUMN_FARM_LOCATION].asNullableString() ?: "")
+                put("contactPerson", row[COLUMN_FARM_OWNER].asNullableString() ?: "")
+                put("status", if ((row[COLUMN_FARM_STATUS] as? Number)?.toInt() == 0) "inactive" else "active")
+            })
+        }
+
+        val seasonsJson = org.json.JSONArray()
+        if (seasonRows.isEmpty()) {
+            seasonsJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", "default-$defaultYear")
+                put("name", "Season $defaultYear")
+                put("year", defaultYear)
+                put("status", "active")
+                put("oldFarmId", defaultFarmId)
+            })
+        } else {
+            seasonRows.forEach { row ->
+                seasonsJson.put(org.json.JSONObject().apply {
+                    put("oldAndroidId", row[COLUMN_SEASON_ID].asString())
+                    put("name", row[COLUMN_SEASON_NAME].asString().ifBlank { "Season ${row[COLUMN_SEASON_YEAR].asInt(defaultYear)}" })
+                    put("year", row[COLUMN_SEASON_YEAR].asInt(defaultYear))
+                    put("status", when {
+                        (row[COLUMN_SEASON_IS_ACTIVE] as? Number)?.toInt() == 1 -> "active"
+                        (row[COLUMN_SEASON_IS_CLOSED] as? Number)?.toInt() == 1 -> "closed"
+                        else -> "inactive"
+                    })
+                    put("oldFarmId", defaultFarmId)
+                })
+            }
+        }
+
+        val laboursJson = org.json.JSONArray()
+        labourRows.forEach { row ->
+            val groupId = row[COLUMN_LABOUR_GROUP_ID].asString()
+            laboursJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", row[COLUMN_LABOUR_ID].asString())
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", fallbackSeasonId)
+                put("name", row[COLUMN_LABOUR_NAME].asString())
+                put("groupName", groupNameById[groupId].orEmpty().ifBlank { "General" })
+                put("paymentType", mapPaymentType(row[COLUMN_LABOUR_TYPE].asNullableString()))
+                put("phone", "")
+                put("status", normalizeLabourStatus(row[COLUMN_LABOUR_STATUS].asNullableString(), row[COLUMN_LABOUR_END_DATE].asNullableString()))
+                put("notes", row[COLUMN_LABOUR_REMARKS].asNullableString() ?: "")
+            })
+        }
+
+        val accountsJson = org.json.JSONArray()
+        val partnersJson = org.json.JSONArray()
+        fundSourceRows.forEach { row ->
+            val accountId = row[COLUMN_SOURCE_ID].asString()
+            val accountName = row[COLUMN_SOURCE_NAME].asString()
+            val accountType = mapAccountType(accountName)
+            val openingBalance = accountBalanceById[accountId] ?: 0.0
+
+            accountsJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", accountId)
+                put("name", accountName)
+                put("type", accountType)
+                put("openingBalance", openingBalance)
+                put("status", "active")
+            })
+
+            if (accountType == "partner") {
+                partnersJson.put(org.json.JSONObject().apply {
+                    put("oldAndroidId", accountId)
+                    put("oldAccountId", accountId)
+                    put("name", accountName)
+                    put("balance", openingBalance)
+                    put("status", "active")
+                })
+            }
+        }
+
+        val voucherItemsByVoucherId = voucherItemRows.groupBy { it[COLUMN_EXP_VOUCHER_ID].asString() }
+        val expensesJson = org.json.JSONArray()
+        voucherRows.forEach { row ->
+            val voucherId = row[COLUMN_VOUCHER_ID].asString()
+            val items = voucherItemsByVoucherId[voucherId].orEmpty()
+            val categories = items.mapNotNull { it[COLUMN_EXP_CATEGORY].asNullableString()?.trim() }.filter { it.isNotEmpty() }.distinct()
+            val descriptions = items.mapNotNull { it[COLUMN_EXP_DESC].asNullableString()?.trim() }.filter { it.isNotEmpty() }.distinct()
+            val sourceId = row[COLUMN_VOUCHER_SOURCE_ID].asString()
+            val sourceName = fundSourceById[sourceId]?.get(COLUMN_SOURCE_NAME).asNullableString().orEmpty()
+            val sourceType = mapAccountType(sourceName)
+
+            expensesJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", voucherId)
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
+                put("voucherNumber", row[COLUMN_VOUCHER_NUMBER].asNullableString() ?: "")
+                put("date", normalizeDate(row[COLUMN_VOUCHER_DATE].asNullableString()))
+                put("category", when {
+                    categories.isEmpty() -> ""
+                    categories.size == 1 -> categories.first()
+                    else -> "Mixed"
+                })
+                put("subcategory", "")
+                put("description", descriptions.joinToString("; "))
+                put("totalAmount", row[COLUMN_VOUCHER_TOTAL].asDouble())
+                put("oldPaymentAccountId", normalizeReferenceId(sourceId))
+                put("paidByPartnerName", if (sourceType == "partner") sourceName else "")
+                put("notes", row[COLUMN_VOUCHER_BY].asNullableString() ?: "")
+            })
+        }
+
+        val expenseItemsJson = org.json.JSONArray()
+        voucherItemRows.forEach { row ->
+            expenseItemsJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", row[COLUMN_EXP_ITEM_ID].asString())
+                put("oldExpenseId", row[COLUMN_EXP_VOUCHER_ID].asString())
+                put("description", row[COLUMN_EXP_DESC].asNullableString() ?: "")
+                put("category", row[COLUMN_EXP_CATEGORY].asNullableString() ?: "")
+                put("subcategory", "")
+                put("amount", row[COLUMN_EXP_AMOUNT].asDouble())
+                put("quantity", org.json.JSONObject.NULL)
+                put("unit", org.json.JSONObject.NULL)
+            })
+        }
+
+        val advancesJson = org.json.JSONArray()
+        advanceRows.forEach { row ->
+            advancesJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", row[COLUMN_ADVANCE_ID].asString())
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
+                put("oldLabourId", row[COLUMN_ADVANCE_LABOUR_ID].asString())
+                put("date", normalizeDate(row[COLUMN_ADVANCE_DATE].asNullableString()))
+                put("amount", row[COLUMN_ADVANCE_AMOUNT].asDouble())
+                put("oldPaymentAccountId", normalizeReferenceId(row[COLUMN_ADVANCE_SOURCE_ID]))
+                put("notes", row[COLUMN_ADVANCE_DESCRIPTION].asNullableString() ?: "")
+            })
+        }
+
+        val attendanceJson = org.json.JSONArray()
+        attendanceRows.forEach { row ->
+            val labourId = row[COLUMN_ATTENDANCE_LABOUR_ID].asString()
+            val date = normalizeDate(row[COLUMN_ATTENDANCE_DATE].asNullableString())
+            attendanceJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", "${labourId}_$date")
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
+                put("oldLabourId", labourId)
+                put("date", date)
+                put("status", mapAttendanceStatus(row[COLUMN_ATTENDANCE_STATUS].asNullableString()))
+                put("remarks", "")
+            })
+        }
+
+        val salesItemsBySaleId = saleItemRows.groupBy { it[COLUMN_SALE_ITEM_SALE_ID].asString() }
+        val salesJson = org.json.JSONArray()
+        saleRows.forEach { row ->
+            val saleId = row[COLUMN_SALE_ID].asString()
+            val saleItemsJson = org.json.JSONArray()
+            salesItemsBySaleId[saleId].orEmpty().forEach { item ->
+                val dispatchId = item[COLUMN_SALE_ITEM_DISPATCH_ID].asString()
+                val dateTypeId = item[COLUMN_SALE_ITEM_DATE_TYPE_ID].asString()
+                saleItemsJson.put(org.json.JSONObject().apply {
+                    put("dispatchId", dispatchId)
+                    put("dateTypeId", dateTypeId)
+                    put("dateTypeName", dateTypeById[dateTypeId]?.get(COLUMN_DATE_TYPE_NAME).asNullableString() ?: "")
+                    put("vehicleNumber", dispatchRows.firstOrNull { it[COLUMN_DISPATCH_ID].asString() == dispatchId }
+                        ?.get(COLUMN_DISPATCH_VEHICLE_ID)
+                        ?.asString()
+                        ?.let { vehicleById[it]?.get(COLUMN_VEHICLE_NUMBER).asNullableString() } ?: "")
+                    put("quantity", item[COLUMN_SALE_ITEM_QTY].asInt())
+                    put("unitPrice", item[COLUMN_SALE_ITEM_PRICE].asDouble())
+                })
+            }
+
+            salesJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", saleId)
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
+                put("date", normalizeDate(row[COLUMN_SALE_DATE].asNullableString()))
+                put("buyerName", row[COLUMN_SALE_BUYER].asNullableString() ?: "")
+                put("totalAmount", row[COLUMN_SALE_TOTAL].asDouble())
+                put("oldPaymentAccountId", normalizeReferenceId(row[COLUMN_SALE_SOURCE_ID]))
+                put("items", saleItemsJson)
+                put("notes", "")
+            })
+        }
+
+        val dispatchItemsByDispatchId = dispatchItemRows.groupBy { it[COLUMN_ITEM_DISPATCH_ID].asString() }
+        val dispatchesJson = org.json.JSONArray()
+        dispatchRows.forEach { row ->
+            val dispatchId = row[COLUMN_DISPATCH_ID].asString()
+            val vehicleId = row[COLUMN_DISPATCH_VEHICLE_ID].asString()
+            val vehicle = vehicleById[vehicleId]
+            val itemsJson = org.json.JSONArray()
+            dispatchItemsByDispatchId[dispatchId].orEmpty().forEach { item ->
+                val dateTypeId = item[COLUMN_ITEM_DATE_TYPE_ID].asString()
+                itemsJson.put(org.json.JSONObject().apply {
+                    put("oldAndroidId", item[COLUMN_ITEM_ID].asString())
+                    put("dateTypeId", dateTypeId)
+                    put("dateTypeName", dateTypeById[dateTypeId]?.get(COLUMN_DATE_TYPE_NAME).asNullableString() ?: "")
+                    put("cartonCount", item[COLUMN_ITEM_COUNT].asInt())
+                })
+            }
+
+            dispatchesJson.put(org.json.JSONObject().apply {
+                put("oldAndroidId", dispatchId)
+                put("oldFarmId", row[COLUMN_FARM_ID].asString())
+                put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
+                put("date", normalizeDate(row[COLUMN_DISPATCH_DATE].asNullableString()))
+                put("oldVehicleId", vehicleId)
+                put("vehicleNumber", vehicle?.get(COLUMN_VEHICLE_NUMBER).asNullableString() ?: "")
+                put("driverName", vehicle?.get(COLUMN_VEHICLE_DRIVER_NAME).asNullableString() ?: "")
+                put("items", itemsJson)
+            })
+        }
+
+        val summary = linkedMapOf(
+            "farms" to farmsJson.length(),
+            "seasons" to seasonsJson.length(),
+            "labours" to laboursJson.length(),
+            "accounts" to accountsJson.length(),
+            "partners" to partnersJson.length(),
+            "expenses" to expensesJson.length(),
+            "expenseItems" to expenseItemsJson.length(),
+            "advances" to advancesJson.length(),
+            "attendance" to attendanceJson.length(),
+            "sales" to salesJson.length(),
+            "dispatches" to dispatchesJson.length()
+        )
+
+        validatePwaExport(
+            farmsJson = farmsJson,
+            seasonsJson = seasonsJson,
+            laboursJson = laboursJson,
+            accountsJson = accountsJson,
+            partnersJson = partnersJson,
+            expensesJson = expensesJson,
+            expenseItemsJson = expenseItemsJson,
+            advancesJson = advancesJson,
+            attendanceJson = attendanceJson,
+            salesJson = salesJson,
+            dispatchesJson = dispatchesJson,
+            summary = summary
+        )
+
+        val root = org.json.JSONObject()
+        root.put("source", "muzare_android")
+        root.put("exportVersion", "2.0")
+        root.put("exportedAt", buildIsoTimestampUtc())
+        root.put("workspace", org.json.JSONObject().apply {
+            put("name", "Muzare Android")
+            put("ownerName", "")
+            put("ownerEmail", "")
+        })
+        root.put("farms", farmsJson)
+        root.put("seasons", seasonsJson)
+        root.put("labours", laboursJson)
+        root.put("accounts", accountsJson)
+        root.put("partners", partnersJson)
+        root.put("expenses", expensesJson)
+        root.put("expenseItems", expenseItemsJson)
+        root.put("advances", advancesJson)
+        root.put("attendance", attendanceJson)
+        root.put("sales", salesJson)
+        root.put("dispatches", dispatchesJson)
+        root.put("summary", org.json.JSONObject(summary as Map<*, *>))
+
+        return PwaImportExport(
+            json = root.toString(2),
+            summary = LinkedHashMap(summary)
+        )
+    }
+
+    fun exportMigrationJson(): String {
+        val root = org.json.JSONObject()
+        root.put("exportVersion", "1.1")
+        root.put("exportedAt", System.currentTimeMillis())
+        root.put("source", "Muzare Android")
+
+        fun cursorToJSONArray(table: String, selection: String? = "$COLUMN_DELETED_AT IS NULL"): org.json.JSONArray {
+            val arr = org.json.JSONArray()
+            val cursor = readableDatabase.query(table, null, selection, null, null, null, null)
+            while (cursor.moveToNext()) {
+                val obj = org.json.JSONObject()
+                for (i in 0 until cursor.columnCount) {
+                    val name = cursor.getColumnName(i)
+                    when (cursor.getType(i)) {
+                        android.database.Cursor.FIELD_TYPE_INTEGER -> obj.put(name, cursor.getLong(i))
+                        android.database.Cursor.FIELD_TYPE_FLOAT -> obj.put(name, cursor.getDouble(i))
+                        android.database.Cursor.FIELD_TYPE_STRING -> obj.put(name, cursor.getString(i))
+                        android.database.Cursor.FIELD_TYPE_NULL -> obj.put(name, org.json.JSONObject.NULL)
+                    }
+                }
+                arr.put(obj)
+            }
+            cursor.close()
+            return arr
+        }
+
+        root.put("farms", cursorToJSONArray(TABLE_FARM))
+        root.put("seasons", cursorToJSONArray(TABLE_SEASON))
+        root.put("labours", cursorToJSONArray(TABLE_LABOUR))
+        root.put("groups", cursorToJSONArray(TABLE_GROUP))
+        root.put("fundSources", cursorToJSONArray(TABLE_FUND_SOURCE))
+        root.put("vouchers", cursorToJSONArray(TABLE_EXP_VOUCHER))
+        root.put("voucherItems", cursorToJSONArray(TABLE_EXP_ITEM, null))
+        root.put("advances", cursorToJSONArray(TABLE_ADVANCE))
+        root.put("dispatches", cursorToJSONArray(TABLE_DISPATCH))
+        root.put("dispatchItems", cursorToJSONArray(TABLE_DISPATCH_ITEM, null))
+        root.put("sales", cursorToJSONArray(TABLE_SALE))
+        root.put("saleItems", cursorToJSONArray(TABLE_SALE_ITEM, null))
+        root.put("fundEntries", cursorToJSONArray(TABLE_FUND_ENTRY))
+        root.put("accountTransactions", cursorToJSONArray(TABLE_ACCOUNT_TX))
+        root.put("attendance", cursorToJSONArray(TABLE_ATTENDANCE))
+        root.put("vehicles", cursorToJSONArray(TABLE_VEHICLE))
+        root.put("dateTypes", cursorToJSONArray(TABLE_DATE_TYPE))
+        root.put("expCategories", cursorToJSONArray(TABLE_EXP_CAT))
+
+        return root.toString(2)
+    }
+
+    private fun getTableRows(
+        table: String,
+        selection: String? = "$COLUMN_DELETED_AT IS NULL"
+    ): List<Map<String, Any?>> {
+        val cursor = readableDatabase.query(table, null, selection, null, null, null, null)
+        return cursor.useRows()
+    }
+
+    private fun Cursor.useRows(): List<Map<String, Any?>> {
+        val rows = mutableListOf<Map<String, Any?>>()
+        while (moveToNext()) {
+            val row = linkedMapOf<String, Any?>()
+            for (i in 0 until columnCount) {
+                row[getColumnName(i)] = getCursorValue(i)
+            }
+            rows.add(row)
+        }
+        close()
+        return rows
+    }
+
+    private fun Cursor.getCursorValue(index: Int): Any? {
+        return when (getType(index)) {
+            Cursor.FIELD_TYPE_INTEGER -> getLong(index)
+            Cursor.FIELD_TYPE_FLOAT -> getDouble(index)
+            Cursor.FIELD_TYPE_STRING -> getString(index)
+            Cursor.FIELD_TYPE_NULL -> null
+            else -> getString(index)
+        }
+    }
+
+    private fun getAccountBalancesForExport(): Map<String, Double> {
+        val balances = mutableMapOf<String, Double>()
+        val query = """
+            SELECT $COLUMN_TX_ACCOUNT_ID,
+                   SUM(CASE WHEN $COLUMN_TX_TYPE = 'Credit' THEN $COLUMN_TX_AMOUNT ELSE -$COLUMN_TX_AMOUNT END) AS balance
+            FROM $TABLE_ACCOUNT_TX
+            GROUP BY $COLUMN_TX_ACCOUNT_ID
+        """.trimIndent()
+        val cursor = readableDatabase.rawQuery(query, null)
+        while (cursor.moveToNext()) {
+            balances[cursor.getLong(0).toString()] = cursor.getDouble(1)
+        }
+        cursor.close()
+        return balances
+    }
+
+    private fun buildIsoTimestampUtc(): String {
+        val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        formatter.timeZone = TimeZone.getTimeZone("UTC")
+        return formatter.format(Date())
+    }
+
+    private fun normalizeLabourStatus(status: String?, endDate: String?): String {
+        val normalizedStatus = status?.trim()?.lowercase(Locale.US)
+        if (normalizedStatus == "inactive") return "inactive"
+        return if (!endDate.isNullOrBlank() && isPastDate(endDate)) "inactive" else "active"
+    }
+
+    private fun mapPaymentType(value: String?): String {
+        return when (value?.trim()?.uppercase(Locale.US)) {
+            "CONTRACT" -> "contract"
+            "PRODUCTION_BASED" -> "production_based"
+            "MONTHLY" -> "monthly"
+            else -> "daily_wage"
+        }
+    }
+
+    private fun mapAccountType(name: String?): String {
+        val normalized = name?.trim().orEmpty()
+        return when {
+            normalized.equals("Cash", ignoreCase = true) -> "cash"
+            normalized.contains("Bank", ignoreCase = true) -> "bank"
+            normalized.isNotEmpty() && !normalized.equals("Cash", ignoreCase = true) -> "partner"
+            else -> "other"
+        }
+    }
+
+    private fun resolveSeasonId(value: Any?, seasonsById: Map<String, Map<String, Any?>>, fallbackSeasonId: String): String {
+        val seasonId = value.asString()
+        return if (seasonId.isNotBlank() && seasonsById.containsKey(seasonId)) seasonId else fallbackSeasonId
+    }
+
+    private fun normalizeReferenceId(value: Any?): String {
+        val ref = value.asString()
+        return if (ref.isBlank() || ref == "0") "" else ref
+    }
+
+    private fun mapAttendanceStatus(status: String?): String {
+        return when (status?.trim()?.uppercase(Locale.US)) {
+            "P" -> "present"
+            "A" -> "absent"
+            "H", "1/2" -> "half_day"
+            "L" -> "leave"
+            else -> throw IllegalStateException("Unsupported attendance status for export: ${status ?: "(blank)"}")
+        }
+    }
+
+    private fun normalizeDate(value: String?): String {
+        val raw = value?.trim().orEmpty()
+        if (raw.isEmpty()) {
+            throw IllegalStateException("Missing required date value in export data")
+        }
+
+        val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        parser.isLenient = false
+        val parsed = parser.parse(raw)
+            ?: throw IllegalStateException("Invalid date value in export data: $raw")
+        return parser.format(parsed)
+    }
+
+    private fun isPastDate(value: String): Boolean {
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+            val date = parser.parse(value) ?: return false
+            parser.format(date) < parser.format(Date())
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun validatePwaExport(
+        farmsJson: org.json.JSONArray,
+        seasonsJson: org.json.JSONArray,
+        laboursJson: org.json.JSONArray,
+        accountsJson: org.json.JSONArray,
+        partnersJson: org.json.JSONArray,
+        expensesJson: org.json.JSONArray,
+        expenseItemsJson: org.json.JSONArray,
+        advancesJson: org.json.JSONArray,
+        attendanceJson: org.json.JSONArray,
+        salesJson: org.json.JSONArray,
+        dispatchesJson: org.json.JSONArray,
+        summary: Map<String, Int>
+    ) {
+        val errors = mutableListOf<String>()
+
+        validateEntityRefs(laboursJson, "labours", listOf("oldFarmId", "oldSeasonId"), errors)
+        validateEntityRefs(expensesJson, "expenses", listOf("oldFarmId", "oldSeasonId"), errors)
+        validateEntityRefs(expenseItemsJson, "expenseItems", listOf("oldExpenseId"), errors)
+        validateEntityRefs(advancesJson, "advances", listOf("oldLabourId", "oldFarmId", "oldSeasonId"), errors)
+        validateEntityRefs(attendanceJson, "attendance", listOf("oldLabourId", "oldFarmId", "oldSeasonId"), errors)
+        validateEntityRefs(salesJson, "sales", listOf("oldFarmId", "oldSeasonId"), errors)
+        validateEntityRefs(dispatchesJson, "dispatches", listOf("oldFarmId", "oldSeasonId"), errors)
+
+        validateDates(laboursJson, "labours", emptyList(), errors)
+        validateDates(expensesJson, "expenses", listOf("date"), errors)
+        validateDates(advancesJson, "advances", listOf("date"), errors)
+        validateDates(attendanceJson, "attendance", listOf("date"), errors)
+        validateDates(salesJson, "sales", listOf("date"), errors)
+        validateDates(dispatchesJson, "dispatches", listOf("date"), errors)
+
+        validateNumeric(expensesJson, "expenses", listOf("totalAmount"), errors)
+        validateNumeric(expenseItemsJson, "expenseItems", listOf("amount"), errors)
+        validateNumeric(advancesJson, "advances", listOf("amount"), errors)
+        validateNumeric(salesJson, "sales", listOf("totalAmount"), errors)
+
+        val expectedCounts = mapOf(
+            "farms" to farmsJson.length(),
+            "seasons" to seasonsJson.length(),
+            "labours" to laboursJson.length(),
+            "accounts" to accountsJson.length(),
+            "partners" to partnersJson.length(),
+            "expenses" to expensesJson.length(),
+            "expenseItems" to expenseItemsJson.length(),
+            "advances" to advancesJson.length(),
+            "attendance" to attendanceJson.length(),
+            "sales" to salesJson.length(),
+            "dispatches" to dispatchesJson.length()
+        )
+        expectedCounts.forEach { (key, count) ->
+            if (summary[key] != count) {
+                errors.add("Summary count mismatch for $key: expected $count, found ${summary[key]}")
+            }
+        }
+
+        if (errors.isNotEmpty()) {
+            throw IllegalStateException(errors.joinToString("\n"))
+        }
+    }
+
+    private fun validateEntityRefs(
+        array: org.json.JSONArray,
+        label: String,
+        keys: List<String>,
+        errors: MutableList<String>
+    ) {
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            keys.forEach { key ->
+                if (obj.optString(key).isBlank()) {
+                    errors.add("$label[$i] is missing required field $key")
+                }
+            }
+        }
+    }
+
+    private fun validateDates(
+        array: org.json.JSONArray,
+        label: String,
+        keys: List<String>,
+        errors: MutableList<String>
+    ) {
+        val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            keys.forEach { key ->
+                val value = obj.optString(key)
+                if (value.isBlank()) {
+                    errors.add("$label[$i] has blank date for $key")
+                } else {
+                    try {
+                        parser.parse(value)
+                    } catch (_: Exception) {
+                        errors.add("$label[$i] has invalid date '$value' for $key")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun validateNumeric(
+        array: org.json.JSONArray,
+        label: String,
+        keys: List<String>,
+        errors: MutableList<String>
+    ) {
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            keys.forEach { key ->
+                val value = obj.opt(key)
+                if (value !is Number) {
+                    errors.add("$label[$i] has non-numeric value for $key")
+                }
+            }
+        }
+    }
+
+    private fun Any?.asString(): String {
+        return when (this) {
+            null -> ""
+            is String -> this
+            is Number -> if (this.toLong().toDouble() == this.toDouble()) this.toLong().toString() else this.toString()
+            else -> this.toString()
+        }
+    }
+
+    private fun Any?.asNullableString(): String? {
+        val value = asString()
+        return if (value.isBlank()) null else value
+    }
+
+    private fun Any?.asDouble(defaultValue: Double = 0.0): Double {
+        return when (this) {
+            is Number -> this.toDouble()
+            is String -> this.toDoubleOrNull() ?: defaultValue
+            else -> defaultValue
+        }
+    }
+
+    private fun Any?.asInt(defaultValue: Int = 0): Int {
+        return when (this) {
+            is Number -> this.toInt()
+            is String -> this.toIntOrNull() ?: defaultValue
+            else -> defaultValue
+        }
     }
 
     // --- SYNC HELPERS ---

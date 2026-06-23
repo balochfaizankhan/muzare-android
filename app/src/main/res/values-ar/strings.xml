@@ -16,6 +16,13 @@
     <string name="btn_adv_report">تقرير السلف</string>
     <string name="btn_backup">نسخ احتياطي</string>
     <string name="btn_restore">استعادة</string>
+    <string name="action_export_json">تصدير JSON للهجرة</string>
+    <string name="action_export_pwa_json">تصدير للاستيراد في PWA</string>
+    <string name="title_export_ready">التصدير جاهز</string>
+    <string name="label_export_file_path">مسار الملف</string>
+    <string name="label_validation_status">التحقق</string>
+    <string name="validation_passed">تم بنجاح</string>
+    <string name="btn_share">مشاركة</string>
 
     <!-- Advance Dialog -->
     <string name="title_record_advance">تسجيل سلفة</string>

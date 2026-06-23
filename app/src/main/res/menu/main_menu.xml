@@ -25,4 +25,12 @@
         android:id="@+id/action_restore"
         android:title="@string/btn_restore"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export_json"
+        android:title="@string/action_export_json"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export_pwa_json"
+        android:title="@string/action_export_pwa_json"
+        app:showAsAction="never" />
 </menu>
