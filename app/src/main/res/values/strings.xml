@@ -22,8 +22,14 @@
     <string name="btn_adv_report">Advance Report</string>
     <string name="btn_backup">Backup</string>
     <string name="btn_restore">Restore</string>
-    <string name="action_export_json">Export Migration JSON</string>
-    <string name="action_export_pwa_json">Export for PWA Import</string>
+    <string name="action_export_json">Export Migration JSON (v1.1)</string>
+    <string name="action_export_pwa_json">Export for PWA Import (v2.0)</string>
+    <string name="btn_delete_farm">Delete Farm</string>
+    <string name="btn_archive_farm">Archive Farm</string>
+    <string name="msg_confirm_delete_farm">This farm is empty and will be deleted permanently. Continue?</string>
+    <string name="msg_confirm_archive_farm">This farm has existing records. It will be moved to archives and hidden from active lists. Continue?</string>
+    <string name="toast_farm_deleted">Farm deleted</string>
+    <string name="toast_farm_archived">Farm moved to archive</string>
     <string name="title_export_ready">Export Ready</string>
     <string name="label_export_file_path">File Path</string>
     <string name="label_validation_status">Validation</string>

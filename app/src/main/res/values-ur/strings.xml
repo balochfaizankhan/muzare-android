@@ -16,8 +16,14 @@
     <string name="btn_adv_report">ایڈوانس رپورٹ</string>
     <string name="btn_backup">بیک اپ</string>
     <string name="btn_restore">ریسٹور</string>
-    <string name="action_export_json">مائیگریشن JSON ایکسپورٹ کریں</string>
-    <string name="action_export_pwa_json">PWA امپورٹ کے لیے ایکسپورٹ کریں</string>
+    <string name="action_export_json">مائیگریشن JSON ایکسپورٹ کریں (v1.1)</string>
+    <string name="action_export_pwa_json">PWA امپورٹ کے لیے ایکسپورٹ کریں (v2.0)</string>
+    <string name="btn_delete_farm">فارم حذف کریں</string>
+    <string name="btn_archive_farm">فارم آرکائیو کریں</string>
+    <string name="msg_confirm_delete_farm">یہ فارم خالی ہے اور مستقل طور پر حذف ہو جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟</string>
+    <string name="msg_confirm_archive_farm">اس فارم میں ریکارڈز موجود ہیں۔ اسے آرکائیو میں منتقل کر دیا جائے گا اور فعال فہرستوں سے چھپا دیا جائے گا۔ کیا آپ جاری رکھنا چاہتے ہیں؟</string>
+    <string name="toast_farm_deleted">فارم حذف کر دیا گیا</string>
+    <string name="toast_farm_archived">فارم آرکائیو میں منتقل کر دیا گیا</string>
     <string name="title_export_ready">ایکسپورٹ تیار ہے</string>
     <string name="label_export_file_path">فائل پاتھ</string>
     <string name="label_validation_status">ویلیڈیشن</string>

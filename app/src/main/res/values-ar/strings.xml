@@ -16,8 +16,14 @@
     <string name="btn_adv_report">تقرير السلف</string>
     <string name="btn_backup">نسخ احتياطي</string>
     <string name="btn_restore">استعادة</string>
-    <string name="action_export_json">تصدير JSON للهجرة</string>
-    <string name="action_export_pwa_json">تصدير للاستيراد في PWA</string>
+    <string name="action_export_json">تصدير JSON للهجرة (v1.1)</string>
+    <string name="action_export_pwa_json">تصدير للاستيراد في PWA (v2.0)</string>
+    <string name="btn_delete_farm">حذف المزرعة</string>
+    <string name="btn_archive_farm">أرشفة المزرعة</string>
+    <string name="msg_confirm_delete_farm">هذه المزرعة فارغة وسيتم حذفها نهائياً. هل تريد الاستمرار؟</string>
+    <string name="msg_confirm_archive_farm">تحتوي هذه المزرعة على سجلات. سيتم نقلها إلى الأرشيف وإخفاؤها من القوائم النشطة. هل تريد الاستمرار؟</string>
+    <string name="toast_farm_deleted">تم حذف المزرعة</string>
+    <string name="toast_farm_archived">تم نقل المزرعة إلى الأرشيف</string>
     <string name="title_export_ready">التصدير جاهز</string>
     <string name="label_export_file_path">مسار الملف</string>
     <string name="label_validation_status">التحقق</string>

@@ -572,6 +572,7 @@ class DatabaseHelper(private val context: Context) :
         if (seasonRows.isEmpty()) {
             seasonsJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", "default-$defaultYear")
+                put("oldSeasonId", "default-$defaultYear")
                 put("name", "Season $defaultYear")
                 put("year", defaultYear)
                 put("status", "active")
@@ -581,6 +582,7 @@ class DatabaseHelper(private val context: Context) :
             seasonRows.forEach { row ->
                 seasonsJson.put(org.json.JSONObject().apply {
                     put("oldAndroidId", row[COLUMN_SEASON_ID].asString())
+                    put("oldSeasonId", row[COLUMN_SEASON_ID].asString())
                     put("name", row[COLUMN_SEASON_NAME].asString().ifBlank { "Season ${row[COLUMN_SEASON_YEAR].asInt(defaultYear)}" })
                     put("year", row[COLUMN_SEASON_YEAR].asInt(defaultYear))
                     put("status", when {
@@ -598,6 +600,7 @@ class DatabaseHelper(private val context: Context) :
             val groupId = row[COLUMN_LABOUR_GROUP_ID].asString()
             laboursJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", row[COLUMN_LABOUR_ID].asString())
+                put("oldLabourId", row[COLUMN_LABOUR_ID].asString())
                 put("oldFarmId", row[COLUMN_FARM_ID].asString())
                 put("oldSeasonId", fallbackSeasonId)
                 put("name", row[COLUMN_LABOUR_NAME].asString())
@@ -619,6 +622,7 @@ class DatabaseHelper(private val context: Context) :
 
             accountsJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", accountId)
+                put("oldAccountId", accountId)
                 put("name", accountName)
                 put("type", accountType)
                 put("openingBalance", openingBalance)
@@ -649,6 +653,7 @@ class DatabaseHelper(private val context: Context) :
 
             expensesJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", voucherId)
+                put("oldExpenseId", voucherId)
                 put("oldFarmId", row[COLUMN_FARM_ID].asString())
                 put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
                 put("voucherNumber", row[COLUMN_VOUCHER_NUMBER].asNullableString() ?: "")
@@ -685,6 +690,7 @@ class DatabaseHelper(private val context: Context) :
         advanceRows.forEach { row ->
             advancesJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", row[COLUMN_ADVANCE_ID].asString())
+                put("oldAdvanceId", row[COLUMN_ADVANCE_ID].asString())
                 put("oldFarmId", row[COLUMN_FARM_ID].asString())
                 put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
                 put("oldLabourId", row[COLUMN_ADVANCE_LABOUR_ID].asString())
@@ -701,6 +707,7 @@ class DatabaseHelper(private val context: Context) :
             val date = normalizeDate(row[COLUMN_ATTENDANCE_DATE].asNullableString())
             attendanceJson.put(org.json.JSONObject().apply {
                 put("oldAndroidId", "${labourId}_$date")
+                put("oldAttendanceId", "${labourId}_$date")
                 put("oldFarmId", row[COLUMN_FARM_ID].asString())
                 put("oldSeasonId", resolveSeasonId(row[COLUMN_SEASON_LINK_ID], seasonById, fallbackSeasonId))
                 put("oldLabourId", labourId)
@@ -1447,9 +1454,10 @@ class DatabaseHelper(private val context: Context) :
         return id
     }
 
-    fun getAllFarms(): List<Farm> {
+    fun getAllFarms(includeArchived: Boolean = true): List<Farm> {
         val list = mutableListOf<Farm>()
-        val cursor = readableDatabase.query(TABLE_FARM, null, "$COLUMN_DELETED_AT IS NULL", null, null, null, "$COLUMN_FARM_NAME ASC")
+        val selection = if (includeArchived) "$COLUMN_DELETED_AT IS NULL" else "$COLUMN_DELETED_AT IS NULL AND $COLUMN_FARM_STATUS = 1"
+        val cursor = readableDatabase.query(TABLE_FARM, null, selection, null, null, null, "$COLUMN_FARM_NAME ASC")
         while (cursor.moveToNext()) {
             list.add(Farm(
                 id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_FARM_ID_PK)),
@@ -1480,6 +1488,54 @@ class DatabaseHelper(private val context: Context) :
             addToSyncQueue(TABLE_FARM, "UPDATE", id.toString())
         }
         return success
+    }
+
+    fun isFarmEmpty(farmId: Int): Boolean {
+        val tables = listOf(
+            TABLE_LABOUR, TABLE_ATTENDANCE, TABLE_ADVANCE, 
+            TABLE_DISPATCH, TABLE_EXP_VOUCHER, TABLE_FUND_ENTRY, TABLE_SALE
+        )
+        for (table in tables) {
+            val cursor = readableDatabase.rawQuery(
+                "SELECT COUNT(*) FROM $table WHERE $COLUMN_FARM_ID = ? AND $COLUMN_DELETED_AT IS NULL", 
+                arrayOf(farmId.toString())
+            )
+            if (cursor.moveToFirst() && cursor.getInt(0) > 0) {
+                cursor.close()
+                return false
+            }
+            cursor.close()
+        }
+        return true
+    }
+
+    fun deleteOrArchiveFarm(farmId: Int): Boolean {
+        val now = System.currentTimeMillis()
+        return if (isFarmEmpty(farmId)) {
+            // Hard delete farm record or soft delete? 
+            // Requirement says "delete if it has no data, otherwise archive".
+            // I'll soft delete the farm itself for consistency if I have a column for it.
+            val values = ContentValues().apply {
+                put(COLUMN_DELETED_AT, now)
+                put(COLUMN_UPDATED_AT, now)
+            }
+            val rows = writableDatabase.update(TABLE_FARM, values, "$COLUMN_FARM_ID_PK = ?", arrayOf(farmId.toString()))
+            if (rows > 0) {
+                addToSyncQueue(TABLE_FARM, "DELETE", farmId.toString())
+            }
+            rows > 0
+        } else {
+            // Archive: Set activeStatus to 0
+            val values = ContentValues().apply {
+                put(COLUMN_FARM_STATUS, 0)
+                put(COLUMN_UPDATED_AT, now)
+            }
+            val rows = writableDatabase.update(TABLE_FARM, values, "$COLUMN_FARM_ID_PK = ?", arrayOf(farmId.toString()))
+            if (rows > 0) {
+                addToSyncQueue(TABLE_FARM, "UPDATE", farmId.toString())
+            }
+            rows > 0
+        }
     }
 
     fun clearAndRestoreFarms(farms: List<Map<String, Any>>) {

@@ -58,7 +58,7 @@ class FarmsActivity : AppCompatActivity() {
 
     private fun loadFarms() {
         farmsListContainer.removeAllViews()
-        val farms = databaseHelper.getAllFarms()
+        val farms = databaseHelper.getAllFarms(includeArchived = false)
         val currentFarmId = databaseHelper.getCurrentFarmId()
 
         farms.forEach { farm ->
@@ -167,6 +167,28 @@ class FarmsActivity : AppCompatActivity() {
                 val name = nameInput.text.toString()
                 if (name.isNotEmpty()) {
                     databaseHelper.updateFarm(farm.id, name, locationInput.text.toString(), ownerInput.text.toString(), remarksInput.text.toString())
+                    loadFarms()
+                }
+            }
+            .setNeutralButton(if (databaseHelper.isFarmEmpty(farm.id)) R.string.btn_delete_farm else R.string.btn_archive_farm) { _, _ ->
+                showDeleteArchiveConfirmation(farm)
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun showDeleteArchiveConfirmation(farm: DatabaseHelper.Farm) {
+        val isEmpty = databaseHelper.isFarmEmpty(farm.id)
+        val title = if (isEmpty) R.string.btn_delete_farm else R.string.btn_archive_farm
+        val message = if (isEmpty) R.string.msg_confirm_delete_farm else R.string.msg_confirm_archive_farm
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                if (databaseHelper.deleteOrArchiveFarm(farm.id)) {
+                    val toastMsg = if (isEmpty) R.string.toast_farm_deleted else R.string.toast_farm_archived
+                    Toast.makeText(this, toastMsg, Toast.LENGTH_SHORT).show()
                     loadFarms()
                 }
             }
